@@ -26,8 +26,8 @@ EatUp este o platformă de livrare mâncare dezvoltată ca proiect de licență,
 11. [Structura proiectului](#11-structura-proiectului)
 12. [API Endpoints](#12-api-endpoints)
 13. [Funcționalități timp real — SignalR](#13-funcționalități-timp-real--signalr)
-14. [Limitări cunoscute](#15-limitări-cunoscute)
-15. [Autor](#16-autor)
+14. [Limitări cunoscute](#14-limitări-cunoscute)
+15. [Autor](#15-autor)
 
 ---
 
