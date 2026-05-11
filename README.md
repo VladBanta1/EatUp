@@ -436,7 +436,7 @@ Users (1) ────────────────── (1) Restaurants
 
 **Varianta A — Git:**
 ```bash
-git clone https://github.com/[username]/EatUp.git
+git clone https://github.com/VladBanta1/EatUp.git
 cd EatUp
 ```
 
@@ -682,7 +682,7 @@ Toate conturile sunt create automat la primul start al aplicației.
 12. Deschideți un alt tab de browser și logați-vă cu contul restaurantului (`carbon@eatup.ro` / `Rest@1234`)
 13. Pe panoul restaurantului (Orders), vedeți comanda nouă cu sunet și notificare
 14. Apăsați **Acceptă** pe cardul comenzii
-15. Reveniți pe tab-ul clientului → statusul se actualizează la **Acceptată** fără refresh
+15. Reveniți pe tab-ul clientului → statusul se actualizează la **Acceptată** 
 16. Continuați să avansați statusul din panoul restaurantului: Preparing → Ready → Out for Delivery
 17. Când statusul devine **Out for Delivery**, pe harta clientului apare un marker animat al curierului care se deplasează spre adresa de livrare
 18. Simularea durează ~90 secunde, după care comanda este marcată automat **Livrată**
@@ -996,26 +996,7 @@ Când restaurantul marchează o comandă **Out for Delivery**, hub-ul pornește 
 
 ---
 
-## 14. Capturi de ecran
-
-> *Capturile de ecran vor fi adăugate manual*
-
-Capturi de ecran recomandate pentru documentație:
-
-1. **Pagina principală** — gridul de restaurante cu filtre de categorie și oraș
-2. **Pagina restaurant** — hero cu cover, meniu pe categorii, secțiunea recenzii
-3. **Pagina coș** — produse, cod promo aplicat, harta locației de livrare, opțiunile de plată
-4. **Tracking comandă** — cronologie statusuri, harta cu marker curier animat
-5. **Panoul comenzi restaurant** — carduri comenzi active cu butoane de avansare status
-6. **Gestionare meniu restaurant** — categorii drag-and-drop, produse cu toggle disponibilitate
-7. **Statistici restaurant** — grafice Chart.js comenzi și venituri
-8. **Dashboard admin** — KPI cards, grafice activitate platformă
-9. **Gestionare restaurante admin** — tab-uri pending / toate
-10. **Mesaje de contact admin** — tabelul cu mesaje și modalul de răspuns
-
----
-
-## 15. Limitări cunoscute
+## 14. Limitări cunoscute
 
 | Limitare | Detalii |
 |---|---|
@@ -1030,16 +1011,16 @@ Capturi de ecran recomandate pentru documentație:
 
 ---
 
-## 16. Autor
+## 15. Autor
 
 **Vlad-Vasile Banță**
 
 Universitatea din Craiova  
 Facultatea de Automatică, Calculatoare și Electronică  
-Specializarea: Calculatoare și Tehnologia Informației  
+Specializarea: Calculatoare Engleză
 An universitar: 2025–2026
 
-**Coordonator științific:** *[se completează manual]*
+**Coordonator științific:** *Gabriel Badea*
 
 ---
 
