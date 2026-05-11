@@ -1,0 +1,550 @@
+@model RestaurantDetailViewModel
+@{
+    ViewData["Title"] = Model.Restaurant.Name;
+    var r = Model.Restaurant;
+    var isLoggedIn = User.Identity?.IsAuthenticated == true;
+    var isCustomer = User.FindFirst("Role")?.Value == "Customer";
+
+    var categoryGradients = new Dictionary<string, string>
+    {
+        ["Pizza"]="135deg,#ff6b6b,#ff8e53",["Sushi"]="135deg,#4ecdc4,#2193b0",
+        ["Burger"]="135deg,#f7971e,#ffd200",["Salads"]="135deg,#56ab2f,#a8e063",
+        ["Romanian"]="135deg,#c94b4b,#8B0000",["Asian"]="135deg,#f953c6,#b91d73",
+        ["Italian"]="135deg,#009fff,#ec2f4b",["Fast Food"]="135deg,#f7971e,#ff4e50",
+        ["Desserts"]="135deg,#da22ff,#9733ee",
+    };
+    string gradient = categoryGradients.TryGetValue(r.Category, out var g) ? g : "135deg,#667eea,#764ba2";
+
+    var cart = Model.CurrentCart;
+    bool cartIsThisRestaurant = cart != null && cart.RestaurantId == r.Id;
+    int cartCount = cartIsThisRestaurant ? cart!.TotalItems : 0;
+    decimal cartSubtotal = cartIsThisRestaurant ? cart!.Subtotal : 0;
+    bool isCityMismatch = Model.IsCityMismatch;
+
+    var avgRating = Model.Reviews.Count > 0 ? Model.Reviews.Average(rv => rv.Rating) : 0;
+    var ic = System.Globalization.CultureInfo.InvariantCulture;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .menu-tabs-bar { position: sticky; top: 70px; z-index: 100; transition: box-shadow .25s; }
+        .menu-tabs-bar.is-stuck { box-shadow: 0 4px 20px rgba(15,23,42,.12); }
+        .cart-sidebar  { position: sticky; top: 90px; }
+        .cart-bottom-bar {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+            background: var(--navy); color: white; padding: .9rem 1.25rem;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 -4px 20px rgba(0,0,0,.25);
+        }
+    </style>
+}
+
+<div class="restaurant-hero" style="background: linear-gradient(@gradient);">
+    @if (!string.IsNullOrEmpty(r.CoverImage))
+    {
+        <img src="@r.CoverImage" alt="" class="restaurant-hero-bg-img" />
+    }
+    <div class="restaurant-hero-overlay">
+        <div class="container py-4">
+            <div class="d-flex align-items-end gap-4 flex-wrap">
+                <div class="hero-logo-wrap">
+                    @if (!string.IsNullOrEmpty(r.Logo))
+                    { <img src="@r.Logo" alt="logo" class="hero-logo-img" /> }
+                    else
+                    { <div class="hero-logo-placeholder">@r.Name[0]</div> }
+                </div>
+                <div class="hero-info flex-grow-1">
+                    <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                        <h1 class="hero-restaurant-name mb-0">@r.Name</h1>
+                        <span class="badge px-3 py-1 fw-600 @(Model.IsOpen ? "" : "")"
+                              style="background:@(Model.IsOpen ? "#22c55e" : "#ef4444"); font-size:.8rem; border-radius:20px;">
+                            @(Model.IsOpen ? "Deschis acum" : "Închis")
+                        </span>
+                    </div>
+                    <div class="hero-meta d-flex flex-wrap gap-3">
+                        <span>⭐ <strong>@r.Rating.ToString("0.0")</strong> (@r.TotalReviews recenzii)</span>
+                        <span>⏱ <strong>@r.EstimatedDeliveryTime min</strong></span>
+                        <span>🚚 <strong>@(r.DeliveryFee == 0 ? "Livrare gratuită" : r.DeliveryFee + " RON")</strong></span>
+                        <span>🛒 <strong>Min. @r.MinOrderAmount RON</strong></span>
+                        <span class="text-white-50">📍 @r.Address</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(r.Description))
+                    {
+                        <p class="hero-desc mt-2 mb-0">@r.Description</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    @if (!isLoggedIn || isCustomer)
+    {
+        <button id="btnFavorite" data-restaurant-id="@r.Id"
+                data-favorited="@Model.IsFavorited.ToString().ToLower()"
+                class="btn-favorite-hero @(Model.IsFavorited ? "favorited" : "")"
+                title="@(Model.IsFavorited ? "Elimină de la favorite" : "Adaugă la favorite")"
+                style="position:absolute;bottom:1rem;right:1rem;width:36px;height:36px;font-size:1rem;z-index:10;">
+            <span class="fav-icon">@(Model.IsFavorited ? "❤️" : "🤍")</span>
+        </button>
+    }
+</div>
+
+@if (isCityMismatch)
+{
+    <div class="container-fluid px-0">
+        <div class="alert alert-warning mb-0 rounded-0 border-0 text-center fw-600" style="background:#fff3cd;font-size:.93rem;padding:.75rem 1rem;">
+            🚫 Acest restaurant nu livrează în orașul tău.
+            <a asp-controller="Profile" asp-action="Index" class="ms-2 fw-700 text-decoration-none" style="color:#856404;">Actualizează orașul în profil</a>
+        </div>
+    </div>
+}
+
+<nav class="menu-tabs-bar bg-white border-bottom shadow-sm">
+    <div class="container">
+        <div class="d-flex gap-1 overflow-auto py-2" id="menuTabBar" style="scrollbar-width:none;">
+            @foreach (var sec in Model.MenuSections)
+            {
+                <a href="#cat-@sec.Category.Id" class="menu-tab-link" data-target="cat-@sec.Category.Id">
+                    @sec.Category.Name
+                </a>
+            }
+        </div>
+    </div>
+</nav>
+
+<div class="container py-4">
+    <div class="row g-4 align-items-start">
+
+        <div class="col-lg-8">
+            @foreach (var sec in Model.MenuSections)
+            {
+                <section id="cat-@sec.Category.Id" class="mb-5 menu-section">
+                    <h4 class="fw-700 mb-3" style="font-size:1.1rem; border-left:4px solid var(--orange); padding-left:.75rem;">
+                        @sec.Category.Name
+                    </h4>
+                    <div class="row g-3">
+                        @foreach (var item in sec.Items)
+                        {
+                            <div class="col-12 col-md-6">
+                                <div class="menu-item-card">
+                                    <div class="menu-item-body">
+                                        <div class="menu-item-info">
+                                            <h6 class="menu-item-name">@item.Name</h6>
+                                            @if (!string.IsNullOrEmpty(item.Description))
+                                            {
+                                                <p class="menu-item-desc">@item.Description</p>
+                                            }
+                                            <div class="menu-item-price">@item.Price.ToString("0.00") RON</div>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(item.Image))
+                                        {
+                                            <div class="menu-item-img-wrap">
+                                                <img src="@item.Image" alt="@item.Name" class="menu-item-img" />
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="menu-item-footer">
+                                        @if (!isLoggedIn)
+                                        {
+                                            <a asp-controller="Account" asp-action="Login"
+                                               asp-route-returnUrl="/restaurants/@r.Id"
+                                               class="btn btn-orange btn-sm w-100">
+                                                Autentifică-te pentru a comanda
+                                            </a>
+                                        }
+                                        else if (!isCustomer)
+                                        {
+                                            <button class="btn btn-outline-secondary btn-sm w-100" disabled>
+                                                Disponibil doar clienților
+                                            </button>
+                                        }
+                                        else if (!Model.IsOpen)
+                                        {
+                                            <button class="btn btn-outline-secondary btn-sm w-100" disabled>
+                                                Restaurantul este închis
+                                            </button>
+                                        }
+                                        else if (isCityMismatch)
+                                        {
+                                            <button class="btn btn-secondary btn-sm w-100" disabled
+                                                    style="opacity:.55;cursor:not-allowed;" title="Restaurantul nu livrează în orașul tău">
+                                                Nu livrează în orașul tău
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-orange btn-sm w-100 btn-add-to-cart"
+                                                    data-item-id="@item.Id"
+                                                    data-item-name="@item.Name"
+                                                    data-item-price="@item.Price"
+                                                    data-restaurant-id="@r.Id"
+                                                    data-delivery-fee="@r.DeliveryFee">
+                                                + Adaugă în coș
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            <section id="reviews" class="mt-2">
+                <h4 class="fw-700 mb-4" style="font-size:1.1rem; border-left:4px solid var(--orange); padding-left:.75rem;">
+                    Recenzii (@Model.Reviews.Count)
+                </h4>
+
+                @if (Model.Reviews.Count == 0)
+                {
+                    <div class="text-muted" style="font-size:.9rem;">
+                        Fii primul care lasă o recenzie pentru @r.Name!
+                    </div>
+                }
+                else
+                {
+                    <div class="review-summary mb-4">
+                        <div class="review-avg">
+                            <span class="review-avg-number">@avgRating.ToString("0.0")</span>
+                            <div>
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <span style="color:@(i <= Math.Round(avgRating) ? "#f59e0b" : "#d1d5db"); font-size:1.3rem;">★</span>
+                                }
+                                <div class="text-muted mt-1" style="font-size:.8rem;">@Model.Reviews.Count recenzii</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @foreach (var rev in Model.Reviews.Take(10))
+                    {
+                        <div class="review-card mb-3">
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <div class="review-avatar">@rev.Customer.Name[0]</div>
+                                <div>
+                                    <div class="fw-600" style="font-size:.9rem;">@rev.Customer.Name</div>
+                                    <div style="font-size:.75rem; color:var(--gray-400);">
+                                        @rev.CreatedAt.ToString("dd MMM yyyy")
+                                    </div>
+                                </div>
+                                <div class="ms-auto">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <span style="color:@(i <= rev.Rating ? "#f59e0b" : "#e2e8f0");">★</span>
+                                    }
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(rev.Comment))
+                            {
+                                <p class="mb-0" style="font-size:.875rem; color:var(--gray-600);">@rev.Comment</p>
+                            }
+                        </div>
+                    }
+                }
+            </section>
+        </div>
+
+        <div class="col-lg-4 d-none d-lg-block">
+            <div class="cart-sidebar card-eatup p-4" id="cartSidebar">
+                <h5 class="fw-700 mb-3">Coșul tău</h5>
+                <div id="cartSidebarContent">
+                    @if (cartIsThisRestaurant && cart!.Items.Count > 0)
+                    {
+                        <div id="cartItemsList">
+                        @foreach (var ci in cart.Items)
+                        {
+                            <div class="d-flex align-items-center justify-content-between mb-2 sidebar-cart-item"
+                                 data-item-id="@ci.MenuItemId"
+                                 data-price="@ci.Price.ToString("0.00", ic)">
+                                <div style="font-size:.875rem; font-weight:500; flex:1; min-width:0; margin-right:.4rem;">@ci.Name</div>
+                                <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                    <button class="qty-btn sidebar-qty-dec" style="width:26px;height:26px;font-size:.95rem;"
+                                            data-item-id="@ci.MenuItemId">−</button>
+                                    <span class="qty-num sidebar-qty" id="sidebar-qty-@ci.MenuItemId"
+                                          style="min-width:22px;">@ci.Quantity</span>
+                                    <button class="qty-btn sidebar-qty-inc" style="width:26px;height:26px;font-size:.95rem;"
+                                            data-item-id="@ci.MenuItemId">+</button>
+                                </div>
+                            </div>
+                        }
+                        </div>
+                        <hr class="my-3" />
+                        <div class="d-flex justify-content-between mb-1" style="font-size:.875rem;">
+                            <span>Subtotal</span><strong id="sidebarSubtotal">@cart.Subtotal.ToString("0.00") RON</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3" style="font-size:.875rem; color:var(--gray-600);">
+                            <span>Livrare</span><span>@(cart.DeliveryFee == 0 ? "Gratuită" : cart.DeliveryFee.ToString("0.00") + " RON")</span>
+                        </div>
+                        <a href="/cart" class="btn btn-orange w-100 fw-600">Mergi la checkout →</a>
+                    }
+                    else
+                    {
+                        <div class="text-center py-3" id="emptyCartMsg">
+                            <div style="font-size:2rem;">🛒</div>
+                            <p class="text-muted mt-2 mb-0" style="font-size:.875rem;">
+                                Coșul tău este gol.<br>Adaugă produse pentru a comanda.
+                            </p>
+                        </div>
+                        <div style="display:none" id="cartItemsList"></div>
+                        <div style="display:none" id="cartTotals">
+                            <hr class="my-3" />
+                            <div class="d-flex justify-content-between mb-1" style="font-size:.875rem;">
+                                <span>Subtotal</span>
+                                <strong id="sidebarSubtotal">0.00 RON</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3" style="font-size:.875rem; color:var(--gray-600);">
+                                <span>Livrare</span>
+                                <span>@(r.DeliveryFee == 0 ? "Gratuită" : r.DeliveryFee.ToString("0.00") + " RON")</span>
+                            </div>
+                            <a href="/cart" class="btn btn-orange w-100 fw-600">Mergi la checkout →</a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (isCustomer)
+{
+    <div class="cart-bottom-bar d-lg-none @(cartCount == 0 ? "d-none" : "")" id="mobileCartBar">
+        <span>
+            <strong id="mobileCartCount">@cartCount</strong> produse
+            · <strong id="mobileCartSubtotal">@cartSubtotal.ToString("0.00") RON</strong>
+        </span>
+        <a href="/cart" class="btn btn-orange btn-sm px-4 fw-600">Checkout →</a>
+    </div>
+}
+
+<div class="modal fade" id="diffRestaurantModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-body p-4 text-center">
+                <div style="font-size:2.5rem; margin-bottom:1rem;">⚠️</div>
+                <h5 class="fw-700 mb-2">Coșul conține produse din alt restaurant</h5>
+                <p class="text-muted" style="font-size:.9rem;">
+                    Poți comanda de la un singur restaurant deodată.
+                    Golești coșul curent și adaugi de la <strong id="newRestaurantName">@r.Name</strong>?
+                </p>
+                <div class="d-flex gap-3 justify-content-center mt-3">
+                    <button class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Anulează</button>
+                    <button class="btn btn-orange px-4" id="btnClearAndAdd">Golește și adaugă</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const CSRF = document.querySelector('meta[name="request-verification-token"]')?.content ?? '';
+        const restaurantId = @r.Id;
+        const deliveryFee = @r.DeliveryFee;
+        let pendingItem = null;
+
+        document.querySelectorAll('.btn-add-to-cart').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const itemId   = parseInt(btn.dataset.itemId);
+                const itemName = btn.dataset.itemName;
+                const itemPrice= parseFloat(btn.dataset.itemPrice);
+
+                btn.disabled = true;
+                btn.textContent = '…';
+
+                const res = await fetch('/Cart/Add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': CSRF
+                    },
+                    body: JSON.stringify({ menuItemId: itemId, restaurantId, quantity: 1 })
+                });
+                const data = await res.json();
+
+                if (data.differentRestaurant) {
+                    pendingItem = { itemId, itemName, itemPrice, btn };
+                    const modal = new bootstrap.Modal(document.getElementById('diffRestaurantModal'));
+                    modal.show();
+                    btn.disabled = false;
+                    btn.textContent = '+ Adaugă în coș';
+                    return;
+                }
+
+                updateCartUI(data.cartCount, data.subtotal);
+                addItemToSidebar(itemId, itemName, itemPrice);
+                showToast(`${itemName} adăugat în coș`, 'success');
+                btn.disabled = false;
+                btn.textContent = '+ Adaugă în coș';
+            });
+        });
+
+        document.getElementById('btnClearAndAdd')?.addEventListener('click', async () => {
+            await fetch('/Cart/Clear', {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': CSRF }
+            });
+            document.getElementById('diffRestaurantModal').querySelector('[data-bs-dismiss]').click();
+
+            if (pendingItem) {
+                pendingItem.btn.click();
+                pendingItem = null;
+            }
+        });
+
+        document.getElementById('btnFavorite')?.addEventListener('click', async function () {
+            const id = this.dataset.restaurantId;
+            const isFav = this.dataset.favorited === 'true';
+
+            @if (!isLoggedIn)
+            {
+                <text>
+                window.location.href = '/Account/Login?returnUrl=/restaurants/@r.Id';
+                return;
+                </text>
+            }
+
+            const res = await fetch(`/restaurants/favorite/${id}`, {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': CSRF }
+            });
+            const data = await res.json();
+
+            this.dataset.favorited = data.favorited.toString();
+            this.classList.toggle('favorited', data.favorited);
+            this.querySelector('.fav-icon').textContent = data.favorited ? '❤️' : '🤍';
+            showToast(data.favorited ? 'Adăugat la favorite' : 'Eliminat de la favorite');
+        });
+
+        const tabBarEl = document.querySelector('.menu-tabs-bar');
+        const heroEl   = document.querySelector('.restaurant-hero');
+        if (tabBarEl && heroEl) {
+            new IntersectionObserver(([entry]) => {
+                tabBarEl.classList.toggle('is-stuck', !entry.isIntersecting);
+            }, { rootMargin: '-70px 0px 0px 0px', threshold: 0 }).observe(heroEl);
+        }
+
+        const sections = document.querySelectorAll('.menu-section');
+        const tabLinks = document.querySelectorAll('.menu-tab-link');
+
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    tabLinks.forEach(t => t.classList.remove('active'));
+                    const active = document.querySelector(`.menu-tab-link[data-target="${entry.target.id}"]`);
+                    if (active) {
+                        active.classList.add('active');
+                        active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }
+                }
+            });
+        }, { rootMargin: '-130px 0px -50% 0px' });
+
+        sections.forEach(s => observer.observe(s));
+
+        tabLinks.forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                const target = document.getElementById(link.dataset.target);
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+
+        function updateCartUI(count, subtotal) {
+            const badge = document.querySelector('.cart-badge .badge');
+            if (badge) { badge.textContent = count; badge.style.display = count > 0 ? '' : 'none'; }
+            else if (count > 0) {
+                const wrap = document.querySelector('.cart-badge');
+                if (wrap) {
+                    const b = document.createElement('span');
+                    b.className = 'badge';
+                    b.textContent = count;
+                    wrap.appendChild(b);
+                }
+            }
+            const bar = document.getElementById('mobileCartBar');
+            if (bar) {
+                bar.classList.toggle('d-none', count === 0);
+                const countEl = document.getElementById('mobileCartCount');
+                const subEl = document.getElementById('mobileCartSubtotal');
+                if (countEl) countEl.textContent = count;
+                if (subEl) subEl.textContent = subtotal.toFixed(2) + ' RON';
+            }
+            // handles two sidebar states: statically rendered when cart already has items, dynamically shown when cart was empty on page load
+            const totals = document.getElementById('cartTotals');
+            const emptyMsg = document.getElementById('emptyCartMsg');
+            if (totals && emptyMsg) {
+                emptyMsg.style.display = count > 0 ? 'none' : '';
+                totals.style.display = count > 0 ? '' : 'none';
+            }
+            const sub = document.getElementById('sidebarSubtotal');
+            if (sub) sub.textContent = subtotal.toFixed(2) + ' RON';
+            document.querySelectorAll('.cart-badge .badge').forEach(b => b.textContent = count);
+        }
+
+        document.getElementById('cartSidebarContent')?.addEventListener('click', async e => {
+            const decBtn = e.target.closest('.sidebar-qty-dec');
+            const incBtn = e.target.closest('.sidebar-qty-inc');
+            if (!decBtn && !incBtn) return;
+
+            const btn    = decBtn || incBtn;
+            const itemId = parseInt(btn.dataset.itemId);
+            const row    = document.querySelector(`.sidebar-cart-item[data-item-id="${itemId}"]`);
+            if (!row) return;
+
+            const qtyEl     = row.querySelector('.sidebar-qty');
+            const currentQty = parseInt(qtyEl.textContent);
+            const newQty    = decBtn ? currentQty - 1 : Math.min(currentQty + 1, 99);
+
+            const res = await fetch('/Cart/UpdateQuantity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': CSRF },
+                body: JSON.stringify({ menuItemId: itemId, quantity: newQty })
+            });
+            const data = await res.json();
+
+            if (newQty === 0) {
+                row.remove();
+                updateCartUI(data.cartCount, data.subtotal);
+                if (data.cartCount === 0) {
+                    const emptyMsg = document.getElementById('emptyCartMsg');
+                    const cartTotals = document.getElementById('cartTotals');
+                    if (emptyMsg) emptyMsg.style.display = '';
+                    if (cartTotals) cartTotals.style.display = 'none';
+                    const mobileBar = document.getElementById('mobileCartBar');
+                    if (mobileBar) mobileBar.classList.add('d-none');
+                }
+            } else {
+                qtyEl.textContent = newQty;
+                updateCartUI(data.cartCount, data.subtotal);
+            }
+        });
+
+        function addItemToSidebar(itemId, name, price) {
+            const list = document.getElementById('cartItemsList');
+            if (!list) return;
+            list.style.display = '';
+
+            const existing = list.querySelector(`.sidebar-cart-item[data-item-id="${itemId}"]`);
+            if (existing) {
+                const qtyEl = existing.querySelector('.sidebar-qty');
+                if (qtyEl) qtyEl.textContent = parseInt(qtyEl.textContent) + 1;
+                return;
+            }
+
+            const btnStyle = 'width:26px;height:26px;font-size:.95rem;';
+            const div = document.createElement('div');
+            div.className = 'd-flex align-items-center justify-content-between mb-2 sidebar-cart-item';
+            div.dataset.itemId = itemId;
+            div.dataset.price = price.toFixed(2);
+            div.innerHTML =
+                `<div style="font-size:.875rem;font-weight:500;flex:1;min-width:0;margin-right:.4rem;">${name}</div>` +
+                `<div class="d-flex align-items-center gap-1 flex-shrink-0">` +
+                `<button class="qty-btn sidebar-qty-dec" style="${btnStyle}" data-item-id="${itemId}">−</button>` +
+                `<span class="qty-num sidebar-qty" style="min-width:22px;">1</span>` +
+                `<button class="qty-btn sidebar-qty-inc" style="${btnStyle}" data-item-id="${itemId}">+</button>` +
+                `</div>`;
+            list.appendChild(div);
+        }
+    </script>
+}

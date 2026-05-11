@@ -1,0 +1,452 @@
+@model RestaurantOrdersViewModel
+@{
+    ViewData["Title"] = "Comenzi — " + Model.Restaurant.Name;
+    var ic = System.Globalization.CultureInfo.InvariantCulture;
+    var orderMapJson = System.Text.Json.JsonSerializer.Serialize(
+        Model.ActiveOrders.ToDictionary(
+            o => o.Id,
+            o => new {
+                num      = o.RestaurantOrderNumber,
+                customer = o.Customer?.Name ?? "",
+                items    = string.Join(" · ", o.OrderItems.Take(3).Select(i => $"{i.NameSnapshot} ×{i.Quantity}")),
+                total    = o.Total.ToString("0.00", ic),
+                payment  = o.PaymentMethod == EatUp.Models.PaymentMethod.Card ? "💳 Card" : "💵 Numerar",
+                createdAt = o.CreatedAt.ToLocalTime().ToString("HH:mm")
+            }
+        )
+    );
+}
+
+@functions {
+    static string StatusLabel(EatUp.Models.OrderStatus s) => s switch {
+        EatUp.Models.OrderStatus.Pending        => "⏳ În așteptare",
+        EatUp.Models.OrderStatus.Accepted       => "✅ Acceptată",
+        EatUp.Models.OrderStatus.Preparing      => "👨‍🍳 Se prepară",
+        EatUp.Models.OrderStatus.ReadyForPickup => "📦 Gata de ridicare",
+        EatUp.Models.OrderStatus.OutForDelivery => "🛵 În drum",
+        EatUp.Models.OrderStatus.Delivered      => "🎉 Livrată",
+        EatUp.Models.OrderStatus.Rejected       => "❌ Respinsă",
+        EatUp.Models.OrderStatus.Cancelled      => "🚫 Anulată",
+        _ => s.ToString()
+    };
+
+    static string StatusClass(EatUp.Models.OrderStatus s) => s switch {
+        EatUp.Models.OrderStatus.Pending        => "status-pending",
+        EatUp.Models.OrderStatus.Accepted       => "status-accepted",
+        EatUp.Models.OrderStatus.Preparing      => "status-preparing",
+        EatUp.Models.OrderStatus.ReadyForPickup => "status-ready",
+        EatUp.Models.OrderStatus.OutForDelivery => "status-delivery",
+        EatUp.Models.OrderStatus.Delivered      => "status-delivered",
+        EatUp.Models.OrderStatus.Rejected       => "status-rejected",
+        EatUp.Models.OrderStatus.Cancelled      => "status-cancelled",
+        _ => ""
+    };
+
+    static string ActionButtonsHtml(EatUp.Models.OrderStatus s, int orderId) => s switch {
+        EatUp.Models.OrderStatus.Pending =>
+            $"<button class='btn btn-success btn-sm fw-600' onclick='doUpdate({orderId},\"Accepted\")'>✅ Acceptă</button>" +
+            $"<button class='btn btn-danger btn-sm fw-600 ms-2' onclick='showRejectModal({orderId})'>❌ Respinge</button>",
+        EatUp.Models.OrderStatus.Accepted =>
+            $"<button class='btn btn-orange btn-sm fw-600' onclick='doUpdate({orderId},\"Preparing\")'>👨‍🍳 Marchează preparare</button>",
+        EatUp.Models.OrderStatus.Preparing =>
+            $"<button class='btn btn-orange btn-sm fw-600' onclick='doUpdate({orderId},\"ReadyForPickup\")'>📦 Gata de ridicare</button>",
+        EatUp.Models.OrderStatus.ReadyForPickup =>
+            $"<button class='btn btn-orange btn-sm fw-600' onclick='doUpdate({orderId},\"OutForDelivery\")'>🛵 Trimite livrare</button>",
+        EatUp.Models.OrderStatus.OutForDelivery =>
+            $"<button class='btn btn-success btn-sm fw-600' onclick='doUpdate({orderId},\"Delivered\")'>🎉 Marchează livrat</button>",
+        _ => ""
+    };
+}
+
+<section class="py-4 border-bottom bg-white">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+                <h2 class="fw-800 mb-1" style="font-size:1.5rem;">Comenzi live</h2>
+                <p class="text-muted mb-0 small">@Model.Restaurant.Name</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="live-dot" id="liveDot"></span>
+                <span id="connStatus" class="small text-muted">Se conectează…</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-4 py-lg-5">
+    <div class="container">
+
+        @if ((bool?)ViewBag.HasApprovedItems == false)
+        {
+            <div class="alert d-flex align-items-start gap-3 mb-4"
+                 style="background:#fff7ed; border:1px solid #fed7aa; border-left:4px solid #f97316; border-radius:12px;">
+                <span style="font-size:1.25rem; flex-shrink:0; line-height:1.4;">⚠️</span>
+                <div>
+                    <strong>Restaurantul tău nu este vizibil publicului.</strong>
+                    <div class="small mt-1 text-muted">
+                        Adaugă cel puțin un produs aprobat pentru a apărea în lista de restaurante.
+                    </div>
+                </div>
+            </div>
+        }
+
+        <ul class="nav nav-pills mb-4 gap-2" id="ordersTab">
+            <li class="nav-item">
+                <button class="nav-link active fw-600 px-4" id="tab-active"
+                        onclick="switchTab('active')">
+                    Comenzi active
+                    <span class="badge ms-2" id="activeCount"
+                          style="background:var(--orange);">@Model.ActiveOrders.Count</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-600 px-4" id="tab-history"
+                        onclick="switchTab('history')">
+                    Istoric
+                    <span class="badge ms-2 bg-secondary">@Model.CompletedOrders.Count</span>
+                </button>
+            </li>
+        </ul>
+
+        <div id="pane-active">
+            <div id="activeOrdersList">
+
+                @if (!Model.ActiveOrders.Any())
+                {
+                    <div class="text-center py-5" id="emptyActive">
+                        <div style="font-size:3rem;">🔔</div>
+                        <h5 class="fw-700 mt-3 mb-2">Nicio comandă activă</h5>
+                        <p class="text-muted small">Noile comenzi vor apărea automat aici.</p>
+                    </div>
+                }
+
+                @foreach (var order in Model.ActiveOrders)
+                {
+                    <div class="order-card-live" id="order-card-@order.Id">
+                        <div class="ocl-header">
+                            <span class="fw-700 text-orange" style="font-size:.95rem;">#@order.RestaurantOrderNumber</span>
+                            <span class="text-muted small">@order.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
+                            <span class="order-status-pill @StatusClass(order.Status)" id="status-badge-@order.Id">
+                                @StatusLabel(order.Status)
+                            </span>
+                        </div>
+                        <div class="ocl-customer mt-2">
+                            👤 <strong>@order.Customer.Name</strong>
+                            &nbsp;·&nbsp;
+                            @(order.PaymentMethod == EatUp.Models.PaymentMethod.Card ? "💳 Card" : "💵 Numerar")
+                        </div>
+                        <div class="ocl-items mt-1 text-muted">
+                            @string.Join(" · ", order.OrderItems.Select(i => $"{i.NameSnapshot} ×{i.Quantity}"))
+                        </div>
+                        <div class="ocl-address mt-1">
+                            📍 @order.DeliveryAddress
+                        </div>
+                        @{
+                            var addrParts = new List<string>();
+                            if (!string.IsNullOrEmpty(order.DeliveryBlock)) addrParts.Add($"Bloc {order.DeliveryBlock}");
+                            if (!string.IsNullOrEmpty(order.DeliveryStaircase)) addrParts.Add($"Sc. {order.DeliveryStaircase}");
+                            if (!string.IsNullOrEmpty(order.DeliveryApartment)) addrParts.Add($"Ap/Et. {order.DeliveryApartment}");
+                        }
+                        @if (addrParts.Count > 0)
+                        {
+                            <div class="ocl-address mt-1">
+                                🏢 @string.Join(", ", addrParts)
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(order.PhoneNumber))
+                        {
+                            <div class="ocl-address mt-1">
+                                📞 @order.PhoneNumber
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(order.DeliveryComment))
+                        {
+                            <div class="mt-1 px-2 py-1 rounded" style="background:#fff7ed; font-size:.82rem; color:#92400e;">
+                                💬 <strong>Mențiuni:</strong> @order.DeliveryComment
+                            </div>
+                        }
+                        <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top">
+                            <span class="fw-800 text-orange" style="font-size:1.1rem;">
+                                @order.Total.ToString("0.00") RON
+                            </span>
+                            <div class="ocl-actions d-flex gap-2" id="actions-@order.Id">
+                                @Html.Raw(ActionButtonsHtml(order.Status, order.Id))
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div id="pane-history" style="display:none;">
+            @if (!Model.CompletedOrders.Any())
+            {
+                <div class="text-center py-5 text-muted" id="emptyHistory">
+                    <div style="font-size:3rem;">📦</div>
+                    <p class="mt-3">Nicio comandă finalizată încă.</p>
+                </div>
+            }
+            else
+            {
+                <div class="d-flex flex-column gap-3" id="historyList">
+                    @foreach (var order in Model.CompletedOrders)
+                    {
+                        <div class="cart-section">
+                            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="fw-700">#@order.RestaurantOrderNumber</span>
+                                        <span class="order-status-pill @StatusClass(order.Status)">
+                                            @StatusLabel(order.Status)
+                                        </span>
+                                    </div>
+                                    <div class="text-muted small">
+                                        👤 @order.Customer.Name &nbsp;·&nbsp;
+                                        @order.CreatedAt.ToLocalTime().ToString("dd MMM yyyy · HH:mm")
+                                    </div>
+                                    <div class="text-muted small mt-1">
+                                        @string.Join(" · ", order.OrderItems.Take(3).Select(i => $"{i.NameSnapshot} ×{i.Quantity}"))
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(order.RejectionReason))
+                                    {
+                                        <div class="text-danger small mt-1">Motiv: @order.RejectionReason</div>
+                                    }
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-800 text-orange">@order.Total.ToString("0.00") RON</div>
+                                    <div class="text-muted small">
+                                        @(order.PaymentMethod == EatUp.Models.PaymentMethod.Card ? "💳 Card" : "💵 Numerar")
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+    </div>
+</section>
+
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-body p-4">
+                <h5 class="fw-700 mb-3">❌ Respinge comanda</h5>
+                <p class="text-muted small mb-3">Introdu motivul respingerii (va fi afișat clientului).</p>
+                <textarea id="rejectReason" rows="3" class="form-control mb-3"
+                          placeholder="Ex: Nu mai avem ingrediente disponibile…"
+                          style="border-radius:10px;"></textarea>
+                <div class="d-flex gap-3 justify-content-end">
+                    <button class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Anulează</button>
+                    <button class="btn btn-danger fw-600 px-4" onclick="confirmReject()">Respinge</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const hub = window.eatupOrderHub;
+        const orderDataMap = @Html.Raw(orderMapJson);
+
+        function setConnStatus(text, live) {
+            document.getElementById('connStatus').textContent = text;
+            const dot = document.getElementById('liveDot');
+            dot.classList.toggle('live', live);
+            dot.classList.toggle('offline', !live);
+        }
+
+        // the hub connection is started in _Layout.cshtml; promise may already be settled by the time this script runs
+        if (window.eatupHubPromise)
+            window.eatupHubPromise
+                .then(() => setConnStatus('Live', true))
+                .catch(() => setConnStatus('Eroare conexiune', false));
+
+        document.addEventListener('eatup:reconnecting', () => setConnStatus('Reconectare…', false));
+        document.addEventListener('eatup:reconnected',  () => setConnStatus('Live', true));
+        document.addEventListener('eatup:disconnected', () => setConnStatus('Deconectat', false));
+
+        document.addEventListener('eatup:order_incoming', function (e) {
+            const order = e.detail;
+            removeEmpty();
+            document.getElementById('activeOrdersList').insertAdjacentHTML('afterbegin', buildCard(order));
+            updateActiveCount(1);
+            showToast(`🔔 Comandă nouă #${order.restaurantOrderNumber} de la ${order.customerName}`, 'success');
+        });
+
+        hub.on('order_updated', (orderId, newStatus, rejectionReason) => {
+            updateCardStatus(orderId, newStatus, rejectionReason);
+        });
+
+        function switchTab(tab) {
+            const isActive = tab === 'active';
+            document.getElementById('pane-active').style.display  = isActive ? '' : 'none';
+            document.getElementById('pane-history').style.display = isActive ? 'none' : '';
+            document.getElementById('tab-active').classList.toggle('active', isActive);
+            document.getElementById('tab-history').classList.toggle('active', !isActive);
+        }
+
+        function doUpdate(orderId, newStatus) {
+            hub.invoke('UpdateOrderStatus', orderId, newStatus)
+                .catch(() => showToast('Eroare la actualizarea statusului.', 'error'));
+        }
+
+        let rejectOrderId = null;
+        function showRejectModal(orderId) {
+            rejectOrderId = orderId;
+            document.getElementById('rejectReason').value = '';
+            new bootstrap.Modal(document.getElementById('rejectModal')).show();
+        }
+        function confirmReject() {
+            const reason = document.getElementById('rejectReason').value.trim();
+            if (!reason) { showToast('Introdu un motiv.', 'error'); return; }
+            hub.invoke('RejectOrder', rejectOrderId, reason)
+                .catch(() => showToast('Eroare.', 'error'));
+            bootstrap.Modal.getInstance(document.getElementById('rejectModal')).hide();
+        }
+
+        function addrDetails(o) {
+            const p = [];
+            if (o.deliveryBlock) p.push(`Bloc ${o.deliveryBlock}`);
+            if (o.deliveryStaircase) p.push(`Sc. ${o.deliveryStaircase}`);
+            if (o.deliveryApartment) p.push(`Ap/Et. ${o.deliveryApartment}`);
+            return p.length ? `<div class="ocl-address mt-1">🏢 ${p.join(', ')}</div>` : '';
+        }
+
+        function buildCard(o) {
+            orderDataMap[o.id] = {
+                num: o.restaurantOrderNumber,
+                customer: o.customerName,
+                items: o.items.slice(0, 3).map(i => `${i.name} ×${i.qty}`).join(' · '),
+                total: o.total,
+                payment: o.paymentMethod === 'Card' ? '💳 Card' : '💵 Numerar',
+                createdAt: o.createdAt
+            };
+            return `
+            <div class="order-card-live" id="order-card-${o.id}">
+                <div class="ocl-header">
+                    <span class="fw-700 text-orange" style="font-size:.95rem;">#${o.restaurantOrderNumber}</span>
+                    <span class="text-muted small">${o.createdAt}</span>
+                    <span class="order-status-pill status-pending" id="status-badge-${o.id}">⏳ În așteptare</span>
+                </div>
+                <div class="ocl-customer mt-2">
+                    👤 <strong>${o.customerName}</strong>
+                    &nbsp;·&nbsp;
+                    ${o.paymentMethod === 'Card' ? '💳 Card' : '💵 Numerar'}
+                </div>
+                <div class="ocl-items mt-1 text-muted">
+                    ${o.items.map(i => `${i.name} ×${i.qty}`).join(' · ')}
+                </div>
+                <div class="ocl-address mt-1">📍 ${o.deliveryAddress}</div>
+                ${addrDetails(o)}
+                ${o.phoneNumber ? `<div class="ocl-address mt-1">📞 ${o.phoneNumber}</div>` : ''}
+                ${o.deliveryComment ? `<div class="mt-1 px-2 py-1 rounded" style="background:#fff7ed;font-size:.82rem;color:#92400e;">💬 <strong>Mențiuni:</strong> ${o.deliveryComment}</div>` : ''}
+                <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top">
+                    <span class="fw-800 text-orange" style="font-size:1.1rem;">${o.total} RON</span>
+                    <div class="ocl-actions d-flex gap-2" id="actions-${o.id}">
+                        ${buildActionBtns('Pending', o.id)}
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function buildActionBtns(status, id) {
+            const m = {
+                'Pending':        `<button class="btn btn-success btn-sm fw-600" onclick="doUpdate(${id},'Accepted')">✅ Acceptă</button><button class="btn btn-danger btn-sm fw-600 ms-2" onclick="showRejectModal(${id})">❌ Respinge</button>`,
+                'Accepted':       `<button class="btn btn-orange btn-sm fw-600" onclick="doUpdate(${id},'Preparing')">👨‍🍳 Marchează preparare</button>`,
+                'Preparing':      `<button class="btn btn-orange btn-sm fw-600" onclick="doUpdate(${id},'ReadyForPickup')">📦 Gata de ridicare</button>`,
+                'ReadyForPickup': `<button class="btn btn-orange btn-sm fw-600" onclick="doUpdate(${id},'OutForDelivery')">🛵 Trimite livrare</button>`,
+                'OutForDelivery': `<button class="btn btn-success btn-sm fw-600" onclick="doUpdate(${id},'Delivered')">🎉 Marchează livrat</button>`,
+            };
+            return m[status] ?? '';
+        }
+
+        function statusLabel(s) {
+            const l = { Pending:'⏳ În așteptare', Accepted:'✅ Acceptată', Preparing:'👨‍🍳 Se prepară',
+                ReadyForPickup:'📦 Gata de ridicare', OutForDelivery:'🛵 În drum',
+                Delivered:'🎉 Livrată', Rejected:'❌ Respinsă', Cancelled:'🚫 Anulată' };
+            return l[s] || s;
+        }
+
+        function statusClass(s) {
+            const c = { Pending:'status-pending', Accepted:'status-accepted', Preparing:'status-preparing',
+                ReadyForPickup:'status-ready', OutForDelivery:'status-delivery',
+                Delivered:'status-delivered', Rejected:'status-rejected', Cancelled:'status-cancelled' };
+            return c[s] || '';
+        }
+
+        function updateCardStatus(orderId, newStatus, rejectionReason) {
+            const badge = document.getElementById(`status-badge-${orderId}`);
+            if (badge) { badge.className = `order-status-pill ${statusClass(newStatus)}`; badge.textContent = statusLabel(newStatus); }
+
+            const actions = document.getElementById(`actions-${orderId}`);
+            if (actions) actions.innerHTML = buildActionBtns(newStatus, orderId);
+
+            if (['Delivered', 'Rejected', 'Cancelled'].includes(newStatus)) {
+                moveToHistory(orderId, newStatus, rejectionReason || '');
+                setTimeout(() => {
+                    document.getElementById(`order-card-${orderId}`)?.remove();
+                    updateActiveCount(-1);
+                    if (document.querySelectorAll('.order-card-live').length === 0) showEmpty();
+                }, 2500);
+            }
+        }
+
+        function moveToHistory(orderId, newStatus, rejectionReason) {
+            const data = orderDataMap[orderId];
+            if (!data) return;
+            document.getElementById('emptyHistory')?.remove();
+            let histList = document.getElementById('historyList');
+            if (!histList) {
+                const pane = document.getElementById('pane-history');
+                pane.innerHTML = '';
+                histList = document.createElement('div');
+                histList.id = 'historyList';
+                histList.className = 'd-flex flex-column gap-3';
+                pane.appendChild(histList);
+            }
+            const slm = { Delivered: '🎉 Livrată', Rejected: '❌ Respinsă', Cancelled: '🚫 Anulată' };
+            const scm = { Delivered: 'status-delivered', Rejected: 'status-rejected', Cancelled: 'status-cancelled' };
+            histList.insertAdjacentHTML('afterbegin', `
+                <div class="cart-section" id="hist-card-${orderId}">
+                    <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="fw-700">#${data.num}</span>
+                                <span class="order-status-pill ${scm[newStatus] || ''}">${slm[newStatus] || newStatus}</span>
+                            </div>
+                            <div class="text-muted small">👤 ${data.customer} &nbsp;·&nbsp; ${data.createdAt}</div>
+                            <div class="text-muted small mt-1">${data.items}</div>
+                            ${rejectionReason ? `<div class="text-danger small mt-1">Motiv: ${rejectionReason}</div>` : ''}
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-800 text-orange">${data.total} RON</div>
+                            <div class="text-muted small">${data.payment}</div>
+                        </div>
+                    </div>
+                </div>`);
+        }
+
+        let activeCount = @Model.ActiveOrders.Count;
+        function updateActiveCount(delta) {
+            activeCount = Math.max(0, activeCount + delta);
+            document.getElementById('activeCount').textContent = activeCount;
+        }
+
+        function removeEmpty() {
+            document.getElementById('emptyActive')?.remove();
+        }
+        function showEmpty() {
+            if (!document.getElementById('emptyActive')) {
+                document.getElementById('activeOrdersList').insertAdjacentHTML('beforeend',
+                    `<div class="text-center py-5" id="emptyActive">
+                        <div style="font-size:3rem;">🔔</div>
+                        <h5 class="fw-700 mt-3 mb-2">Nicio comandă activă</h5>
+                        <p class="text-muted small">Noile comenzi vor apărea automat aici.</p>
+                    </div>`);
+            }
+        }
+    </script>
+}

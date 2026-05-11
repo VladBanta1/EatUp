@@ -1,0 +1,53 @@
+@model EatUp.Models.Restaurant
+@{ ViewData["Title"] = "Dashboard Restaurant"; }
+
+<div class="container py-5">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        @if (!string.IsNullOrEmpty(Model.Logo))
+        {
+            <img src="@Model.Logo" alt="logo" style="width:56px;height:56px;border-radius:12px;object-fit:cover;" />
+        }
+        <div>
+            <h1 class="fw-700 mb-0" style="font-size:1.75rem;">@Model.Name</h1>
+            <span class="text-muted" style="font-size:.9rem;">Dashboard</span>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-3">
+            <div class="card-eatup p-4 text-center">
+                <div style="font-size:2rem; font-weight:800; color:var(--orange);">@ViewBag.OrdersToday</div>
+                <div class="text-muted" style="font-size:.875rem;">Comenzi azi</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-eatup p-4 text-center">
+                <div style="font-size:2rem; font-weight:800; color:var(--orange);">@(((decimal)ViewBag.RevenueToday).ToString("0")) RON</div>
+                <div class="text-muted" style="font-size:.875rem;">Venit azi</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-eatup p-4 text-center">
+                <div style="font-size:2rem; font-weight:800; color:var(--orange);">@Model.Rating ★</div>
+                <div class="text-muted" style="font-size:.875rem;">Rating mediu</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-eatup p-4 text-center">
+                <div style="font-size:2rem; font-weight:800; color:var(--orange);">@Model.TotalReviews</div>
+                <div class="text-muted" style="font-size:.875rem;">Recenzii totale</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <div class="card-eatup p-4">
+            <h5 class="fw-700 mb-3">Navigare rapidă</h5>
+            <div class="d-flex gap-3 flex-wrap">
+                <a asp-controller="Restaurant" asp-action="Orders" class="btn btn-orange">Comenzi live</a>
+                <a asp-controller="Restaurant" asp-action="Menu" class="btn btn-outline-orange">Gestionare meniu</a>
+                <a asp-controller="Restaurant" asp-action="Stats" class="btn btn-outline-orange">Statistici</a>
+            </div>
+        </div>
+    </div>
+</div>

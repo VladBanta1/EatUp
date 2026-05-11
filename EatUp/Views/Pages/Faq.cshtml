@@ -1,0 +1,190 @@
+@{
+    ViewData["Title"] = "Întrebări frecvente";
+}
+
+<section class="page-hero">
+    <div class="container">
+        <div class="page-hero-title">Întrebări frecvente</div>
+        <p class="page-hero-sub">
+            Răspunsuri la cele mai comune întrebări despre platforma EatUp.
+        </p>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+
+                <div class="accordion faq-accordion" id="faqAccordion">
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                Cum plasez o comandă pe EatUp?
+                            </button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Creează-ți un cont sau autentifică-te, răsfoiește lista de restaurante și
+                                selectează unul. Adaugă produsele dorite în coș, accesează coșul, completează
+                                adresa de livrare și alege metoda de plată. Apasă „Plasează comanda" și ești gata.
+                                Vei primi o confirmare prin email și poți urmări comanda în timp real.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                Cât durează livrarea?
+                            </button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Timpul estimat de livrare variază în funcție de restaurant și de distanța față de
+                                adresa ta. În general, timpul mediu este de 25–45 de minute. Fiecare restaurant
+                                afișează timpul estimat pe pagina sa. Poți urmări curierul live pe hartă odată ce
+                                comanda a plecat la tine.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                Pot anula o comandă?
+                            </button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Comanda poate fi anulată doar dacă restaurantul nu a acceptat-o încă. Odată ce
+                                restaurantul confirmă, comanda intră în preparare și nu mai poate fi anulată.
+                                Dacă ai o problemă urgentă, te rugăm să ne contactezi cât mai rapid la
+                                contact@eatup.ro sau +40 700 000 000.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                Ce metode de plată acceptați?
+                            </button>
+                        </h2>
+                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                EatUp acceptă plata cu cardul (Visa, Mastercard, American Express) procesată
+                                securizat prin Stripe, și plata cash la livrare. Datele cardului tău nu sunt
+                                stocate pe serverele noastre — sunt gestionate exclusiv de Stripe, certificat PCI-DSS.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                                Cum aplic un cod promoțional?
+                            </button>
+                        </h2>
+                        <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Pe pagina coșului de cumpărături există câmpul „Cod promoțional". Introdu codul
+                                și apasă „Aplică". Dacă codul este valid și comanda ta îndeplinește condițiile
+                                (valoare minimă, perioadă de valabilitate), reducerea se aplică automat la total.
+                                Un singur cod promoțional poate fi folosit per comandă.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq6">
+                                Ce fac dacă comanda mea întârzie sau nu ajunge?
+                            </button>
+                        </h2>
+                        <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Verifică mai întâi statusul comenzii pe pagina de urmărire — s-ar putea ca
+                                restaurantul să fie ocupat. Dacă întârzierea depășește semnificativ timpul estimat
+                                sau comanda nu sosește, contactează-ne la contact@eatup.ro sau +40 700 000 000.
+                                Echipa noastră va investiga și va găsi o soluție promptă.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq7">
+                                Cum las o recenzie pentru restaurant?
+                            </button>
+                        </h2>
+                        <div id="faq7" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Recenziile pot fi lăsate doar după ce comanda a fost marcată ca „Livrată". Accesează
+                                pagina comenzii din secțiunea „Comenzile mele", derulează jos și completează formularul
+                                de recenzie cu o notă de la 1 la 5 stele și un comentariu opțional. O singură
+                                recenzie per restaurant este permisă.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq8">
+                                Cum mă înregistrez ca restaurant partener?
+                            </button>
+                        </h2>
+                        <div id="faq8" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Accesează <a href="/account/register-restaurant" class="text-orange fw-600">pagina de înregistrare restaurant</a>
+                                și completează formularul cu datele afacerii tale. Echipa noastră revizuiește
+                                cererea în 24–48 de ore și te notifică prin email. Pentru mai multe detalii,
+                                vizitează pagina <a href="/become-partner" class="text-orange fw-600">Devino partener</a>.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq9">
+                                Cum pot contacta suportul EatUp?
+                            </button>
+                        </h2>
+                        <div id="faq9" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Ne poți contacta prin email la <strong>contact@eatup.ro</strong> sau telefonic la
+                                <strong>+40 700 000 000</strong>. Programul echipei de suport este Luni–Duminică,
+                                08:00–23:00. De asemenea, poți folosi formularul de contact de pe
+                                <a href="/contact" class="text-orange fw-600">pagina Contact</a>.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq10">
+                                Este sigură plata cu cardul pe EatUp?
+                            </button>
+                        </h2>
+                        <div id="faq10" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Da, absolut. Toate plățile cu cardul sunt procesate de <strong>Stripe</strong>, unul dintre
+                                cei mai siguri procesatori de plăți din lume, certificat PCI-DSS Nivel 1. EatUp nu
+                                stochează niciodată datele complete ale cardului tău. Conexiunea este criptată SSL/TLS
+                                end-to-end, iar toate tranzacțiile sunt monitorizate anti-fraudă în timp real.
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="text-center mt-5 pt-3">
+                    <p class="text-muted mb-3">Nu ai găsit răspunsul dorit?</p>
+                    <a href="/contact" class="btn btn-orange fw-600 px-5" style="border-radius:12px;">Contactează-ne</a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>

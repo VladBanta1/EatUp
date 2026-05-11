@@ -1,0 +1,527 @@
+@model CartViewModel
+@{
+    ViewData["Title"] = "Coșul meu";
+    var ic = System.Globalization.CultureInfo.InvariantCulture;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+}
+
+@if (Model.Cart.Items.Count == 0)
+{
+    <div class="container py-5">
+        <div class="text-center py-5">
+            <div style="font-size:4rem; line-height:1;">🛒</div>
+            <h3 class="fw-800 mt-3 mb-2">Coșul tău este gol</h3>
+            <p class="text-muted">Adaugă produse dintr-un restaurant pentru a plasa o comandă.</p>
+            <a href="/" class="btn btn-orange mt-3 px-5 fw-600">Explorează restaurante</a>
+        </div>
+    </div>
+}
+else
+{
+    <section class="py-4 py-lg-5">
+        <div class="container">
+
+            <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+                <div>
+                    <h2 class="fw-800 mb-1" style="font-size:1.6rem;">Coșul meu</h2>
+                    <p class="text-muted mb-0 small">
+                        @Model.Cart.RestaurantName &nbsp;·&nbsp; @Model.Cart.TotalItems @(Model.Cart.TotalItems == 1 ? "produs" : "produse")
+                    </p>
+                </div>
+                <button class="btn btn-sm text-danger fw-600" id="btnClearCart" style="border:1px solid #fee2e2; border-radius:8px; padding:.35rem .85rem;">
+                    🗑 Golește coșul
+                </button>
+            </div>
+
+            <div class="row g-4 align-items-start">
+
+                <div class="col-lg-7">
+
+                    <div class="cart-section mb-4">
+                        <div id="cartItemsList">
+                            @foreach (var item in Model.Cart.Items)
+                            {
+                                <div class="cart-item-row" id="cart-item-@item.MenuItemId"
+                                     data-price="@item.Price.ToString("0.00", ic)">
+                                    <div class="cart-item-info">
+                                        <div class="fw-600" style="font-size:.95rem;">@item.Name</div>
+                                        <div class="text-orange fw-600 small mt-1">@item.Price.ToString("0.00") RON / buc</div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="qty-control">
+                                            <button class="qty-btn" data-item-id="@item.MenuItemId" data-action="dec">−</button>
+                                            <span class="qty-num" id="qty-@item.MenuItemId">@item.Quantity</span>
+                                            <button class="qty-btn" data-item-id="@item.MenuItemId" data-action="inc">+</button>
+                                        </div>
+                                        <div class="cart-item-total fw-700" id="item-total-@item.MenuItemId">
+                                            @((item.Price * item.Quantity).ToString("0.00")) RON
+                                        </div>
+                                        <button class="cart-item-remove" data-item-id="@item.MenuItemId" title="Elimină">✕</button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="cart-section">
+                        <h6 class="fw-700 mb-3">📍 Detalii livrare</h6>
+
+                        <label class="fw-600 small mb-1 d-block">Număr de telefon pentru livrare</label>
+                        <input type="tel" id="deliveryPhone" class="form-control mb-3"
+                               placeholder="07xx xxx xxx"
+                               value="@Model.DefaultPhone" />
+
+                        <label class="fw-600 small mb-1 d-block">Adresă de livrare</label>
+                        <input type="text" id="deliveryAddress" class="form-control mb-2"
+                               placeholder="Ex: Str. Victoriei nr. 28, București"
+                               value="@Model.DefaultAddress" />
+                        <div class="row g-2 mb-3">
+                            <div class="col-4">
+                                <label class="fw-600 small mb-1 d-block">Bloc</label>
+                                <input type="text" id="deliveryBlock" class="form-control form-control-sm"
+                                       placeholder="ex: B4" />
+                            </div>
+                            <div class="col-4">
+                                <label class="fw-600 small mb-1 d-block">Scară</label>
+                                <input type="text" id="deliveryStaircase" class="form-control form-control-sm"
+                                       placeholder="ex: 2" />
+                            </div>
+                            <div class="col-4">
+                                <label class="fw-600 small mb-1 d-block">Apartament / Etaj</label>
+                                <input type="text" id="deliveryApartment" class="form-control form-control-sm"
+                                       placeholder="ex: Ap. 15, Et. 3" />
+                            </div>
+                        </div>
+                        <div id="deliveryMap" class="delivery-map-pick"></div>
+                        <input type="hidden" id="deliveryLat" />
+                        <input type="hidden" id="deliveryLng" />
+                        <small class="text-muted mt-2 d-block">
+                            💡 Click pe hartă — adresa se completează automat
+                        </small>
+                    </div>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="order-summary-card">
+                        <h6 class="fw-700 mb-4" style="font-size:1rem;">Sumar comandă</h6>
+
+                        <div class="mb-4">
+                            <label class="small fw-600 mb-2 d-block text-muted text-uppercase" style="font-size:.75rem; letter-spacing:.5px;">
+                                Cod promoțional
+                            </label>
+                            <div class="d-flex gap-2">
+                                <input type="text" id="promoInput" class="form-control form-control-sm"
+                                       placeholder="WELCOME10, EATUP20…"
+                                       style="text-transform:uppercase; letter-spacing:.5px;" />
+                                <button class="btn btn-sm btn-outline-orange fw-600 px-3 text-nowrap"
+                                        id="btnApplyPromo" onclick="applyPromo()">Aplică</button>
+                            </div>
+                            <div id="promoMsg" class="mt-2 small"></div>
+                            <button class="btn btn-sm btn-link text-danger p-0 mt-1 fw-600"
+                                    id="btnRemovePromo" style="display:none; font-size:.8rem;"
+                                    onclick="removePromo()">✕ Elimină codul promo</button>
+                        </div>
+
+                        <div class="summary-lines mb-4">
+                            <div class="summary-line">
+                                <span class="text-muted">Subtotal</span>
+                                <span id="subtotalDisplay">@Model.Cart.Subtotal.ToString("0.00") RON</span>
+                            </div>
+                            <div class="summary-line">
+                                <span class="text-muted">Livrare</span>
+                                <span>
+                                    @if (Model.Cart.DeliveryFee == 0)
+                                    {
+                                        <span class="text-success fw-600">Gratuită 🎉</span>
+                                    }
+                                    else
+                                    {
+                                        @Model.Cart.DeliveryFee.ToString("0.00") <text>RON</text>
+                                    }
+                                </span>
+                            </div>
+                            <div class="summary-line text-success fw-600" id="discountLine" style="display:none;">
+                                <span id="discountLabel">Reducere</span>
+                                <span>−<span id="discountDisplay">0.00</span> RON</span>
+                            </div>
+                            @if (Model.MinOrderAmount > 0)
+                            {
+                                <div class="summary-line" id="minOrderLine">
+                                    <span class="text-muted">Min. comandă</span>
+                                    <span id="minOrderDisplay" class="fw-600">@Model.MinOrderAmount.ToString("0.00") RON</span>
+                                </div>
+                            }
+                            <div class="summary-divider"></div>
+                            <div class="summary-total-line">
+                                <span class="fw-700">Total</span>
+                                <span class="fw-800 text-orange" style="font-size:1.25rem;" id="totalDisplay">
+                                    @Model.Total.ToString("0.00") RON
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="small fw-600 mb-2 d-block text-muted text-uppercase" style="font-size:.75rem; letter-spacing:.5px;">
+                                Metodă de plată
+                            </label>
+                            <div class="d-flex gap-2">
+                                <button class="payment-option active" id="btnPayCard" onclick="selectPayment('Card')">
+                                    💳 Card
+                                </button>
+                                <button class="payment-option" id="btnPayCash" onclick="selectPayment('Cash')">
+                                    💵 Numerar
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="stripeSection" class="mb-4">
+                            <div id="card-element" class="stripe-element-wrap"></div>
+                            <div id="card-errors" class="text-danger" style="font-size:.82rem; min-height:20px;"></div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="small fw-600 mb-2 d-block text-muted text-uppercase" style="font-size:.75rem; letter-spacing:.5px;">
+                                Mențiuni comandă
+                            </label>
+                            <textarea id="deliveryComment" class="form-control form-control-sm" rows="2"
+                                      placeholder="Ex: fără ceapă, tacâmuri vă rog, șervețele extra..."
+                                      style="border-radius:10px; resize:vertical;"></textarea>
+                        </div>
+
+                        <button class="btn btn-orange w-100 fw-700 py-3" id="btnPlaceOrder"
+                                style="font-size:1rem; border-radius:12px;" onclick="placeOrder()">
+                            Plasează comanda →
+                        </button>
+                        <p class="text-center text-muted mt-3 mb-0" style="font-size:.78rem;">
+                            Apăsând butonul confirmi comanda și ești de acord cu termenii serviciului.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+}
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <script>
+        const CSRF = document.querySelector('meta[name="request-verification-token"]')?.content ?? '';
+        const deliveryFee = @Model.Cart.DeliveryFee.ToString("0.00", ic);
+        const minOrderAmount = @Model.MinOrderAmount.ToString("0.00", ic);
+        let discount = 0;
+        let promoCodeId = null;
+        let appliedPromoCode = null;
+        let paymentMethod = 'Card';
+        let stripe, cardElement;
+
+        const stripeKey = '@Model.StripePublishableKey';
+        if (stripeKey && !stripeKey.includes('REPLACE_ME')) {
+            stripe = Stripe(stripeKey);
+            const elements = stripe.elements();
+            cardElement = elements.create('card', {
+                style: {
+                    base: {
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: '15px',
+                        color: '#0f172a',
+                        '::placeholder': { color: '#94a3b8' }
+                    },
+                    invalid: { color: '#dc2626' }
+                },
+                hidePostalCode: true
+            });
+            cardElement.mount('#card-element');
+            cardElement.on('change', e => {
+                document.getElementById('card-errors').textContent = e.error ? e.error.message : '';
+            });
+        } else {
+            document.getElementById('stripeSection').innerHTML =
+                '<div class="alert alert-warning p-2 mb-0" style="font-size:.82rem; border-radius:8px;">' +
+                '⚠️ Stripe nu este configurat. Adaugă cheile reale în <code>appsettings.json</code>.</div>';
+        }
+
+        function selectPayment(method) {
+            paymentMethod = method;
+            document.getElementById('btnPayCard').classList.toggle('active', method === 'Card');
+            document.getElementById('btnPayCash').classList.toggle('active', method === 'Cash');
+            document.getElementById('stripeSection').style.display = method === 'Card' ? '' : 'none';
+        }
+
+        async function updateQty(itemId, newQty) {
+            if (newQty < 0) return;
+            const res = await fetch('/Cart/UpdateQuantity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': CSRF },
+                body: JSON.stringify({ menuItemId: itemId, quantity: newQty })
+            });
+            const data = await res.json();
+
+            if (newQty === 0) {
+                document.getElementById(`cart-item-${itemId}`)?.remove();
+                if (data.cartCount === 0) { location.reload(); return; }
+            } else {
+                const row = document.getElementById(`cart-item-${itemId}`);
+                if (row) {
+                    document.getElementById(`qty-${itemId}`).textContent = newQty;
+                    const price = parseFloat(row.dataset.price);
+                    document.getElementById(`item-total-${itemId}`).textContent = (price * newQty).toFixed(2) + ' RON';
+                }
+            }
+            updateNavBadge(data.cartCount);
+            recalcSummary(data.subtotal);
+        }
+
+        async function removeItem(itemId) {
+            const res = await fetch('/Cart/Remove', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': CSRF },
+                body: JSON.stringify({ menuItemId: itemId })
+            });
+            const data = await res.json();
+            document.getElementById(`cart-item-${itemId}`)?.remove();
+            if (data.cartCount === 0) { location.reload(); return; }
+            updateNavBadge(data.cartCount);
+            recalcSummary(data.subtotal);
+        }
+
+        document.getElementById('cartItemsList').addEventListener('click', async e => {
+            const decBtn    = e.target.closest('[data-action="dec"]');
+            const incBtn    = e.target.closest('[data-action="inc"]');
+            const removeBtn = e.target.closest('.cart-item-remove');
+            if (!decBtn && !incBtn && !removeBtn) return;
+
+            if (decBtn) {
+                const itemId = parseInt(decBtn.dataset.itemId);
+                const qty = parseInt(document.getElementById(`qty-${itemId}`).textContent);
+                await updateQty(itemId, qty - 1);
+            } else if (incBtn) {
+                const itemId = parseInt(incBtn.dataset.itemId);
+                const qty = parseInt(document.getElementById(`qty-${itemId}`).textContent);
+                if (qty < 99) await updateQty(itemId, qty + 1);
+            } else {
+                const itemId = parseInt(removeBtn.dataset.itemId);
+                await removeItem(itemId);
+            }
+        });
+
+        document.getElementById('btnClearCart')?.addEventListener('click', async () => {
+            if (!confirm('Ești sigur că vrei să golești coșul?')) return;
+            await fetch('/Cart/Clear', { method: 'POST', headers: { 'RequestVerificationToken': CSRF } });
+            location.reload();
+        });
+
+        async function applyPromo() {
+            const code = document.getElementById('promoInput').value.trim();
+            if (!code) return;
+            const btn = document.getElementById('btnApplyPromo');
+            btn.disabled = true;
+            btn.textContent = '…';
+            const subtotal = parseFloat(document.getElementById('subtotalDisplay').textContent);
+            try {
+                const res = await fetch('/Cart/ApplyPromo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': CSRF },
+                    body: JSON.stringify({ code, subtotal })
+                });
+                const data = await res.json();
+                const msg = document.getElementById('promoMsg');
+                if (data.ok) {
+                    discount = data.discount;
+                    promoCodeId = data.promoCodeId;
+                    appliedPromoCode = code;
+                    msg.innerHTML = `<span class="text-success fw-600">✓ ${data.description} aplicată!</span>`;
+                    showToast(`Cod promo aplicat: ${data.description} 🎉`, 'success');
+                    document.getElementById('discountLine').style.display = '';
+                    document.getElementById('discountDisplay').textContent = discount.toFixed(2);
+                    document.getElementById('btnRemovePromo').style.display = '';
+                    recalcSummary(parseFloat(document.getElementById('subtotalDisplay').textContent), true);
+                } else {
+                    discount = 0; promoCodeId = null; appliedPromoCode = null;
+                    msg.innerHTML = `<span class="text-danger">✗ ${data.error}</span>`;
+                    document.getElementById('discountLine').style.display = 'none';
+                    document.getElementById('btnRemovePromo').style.display = 'none';
+                    recalcSummary(parseFloat(document.getElementById('subtotalDisplay').textContent), true);
+                }
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Aplică';
+            }
+        }
+
+        function removePromo() {
+            discount = 0; promoCodeId = null; appliedPromoCode = null;
+            document.getElementById('promoInput').value = '';
+            document.getElementById('promoMsg').innerHTML = '';
+            document.getElementById('discountLine').style.display = 'none';
+            document.getElementById('btnRemovePromo').style.display = 'none';
+            recalcSummary(parseFloat(document.getElementById('subtotalDisplay').textContent), true);
+        }
+
+        function recalcSummary(subtotal, skipPromoRecheck = false) {
+            document.getElementById('subtotalDisplay').textContent = subtotal.toFixed(2) + ' RON';
+            if (appliedPromoCode && !skipPromoRecheck) {
+                revalidatePromo(subtotal);
+                return;
+            }
+            const total = Math.max(0, subtotal + deliveryFee - discount);
+            document.getElementById('totalDisplay').textContent = total.toFixed(2) + ' RON';
+        }
+
+        async function revalidatePromo(subtotal) {
+            try {
+                const res = await fetch('/Cart/ApplyPromo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': CSRF },
+                    body: JSON.stringify({ code: appliedPromoCode, subtotal })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    discount = data.discount;
+                    document.getElementById('discountDisplay').textContent = discount.toFixed(2);
+                    document.getElementById('discountLine').style.display = '';
+                } else {
+                    showToast('Codul promo a fost eliminat (subtotal sub minimul cerut).', 'warning');
+                    discount = 0; promoCodeId = null; appliedPromoCode = null;
+                    document.getElementById('promoInput').value = '';
+                    document.getElementById('promoMsg').innerHTML = '';
+                    document.getElementById('discountLine').style.display = 'none';
+                    document.getElementById('btnRemovePromo').style.display = 'none';
+                }
+            } catch { /* keep existing discount on network error */ }
+            const total = Math.max(0, subtotal + deliveryFee - discount);
+            document.getElementById('totalDisplay').textContent = total.toFixed(2) + ' RON';
+        }
+
+        async function placeOrder() {
+            const address = document.getElementById('deliveryAddress').value.trim();
+            if (!address) { showToast('Introdu adresa de livrare.', 'error'); return; }
+
+            const currentSubtotal = parseFloat(document.getElementById('subtotalDisplay').textContent);
+            if (minOrderAmount > 0 && currentSubtotal < minOrderAmount) {
+                showToast(`Comanda minimă la acest restaurant este ${minOrderAmount.toFixed(2)} RON.`, 'error');
+                return;
+            }
+
+            const btn = document.getElementById('btnPlaceOrder');
+            btn.disabled = true;
+            btn.textContent = 'Se procesează…';
+
+            const dLat = document.getElementById('deliveryLat').value;
+            const dLng = document.getElementById('deliveryLng').value;
+            const deliveryLat = dLat ? parseFloat(dLat) : null;
+            const deliveryLng = dLng ? parseFloat(dLng) : null;
+            const total = parseFloat(document.getElementById('totalDisplay').textContent);
+
+            try {
+                let paymentIntentId = null;
+
+                if (paymentMethod === 'Card') {
+                    if (!stripe || !cardElement) {
+                        showToast('Configurează Stripe pentru a plăti cu cardul.', 'error');
+                        btn.disabled = false; btn.textContent = 'Plasează comanda →';
+                        return;
+                    }
+                    const piRes = await fetch('/Cart/CreatePaymentIntent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': CSRF },
+                        body: JSON.stringify({ amount: total })
+                    });
+                    if (!piRes.ok) { throw new Error('Nu s-a putut iniția plata.'); }
+                    const { clientSecret } = await piRes.json();
+
+                    const { paymentIntent, error } = await stripe.confirmCardPayment(clientSecret, {
+                        payment_method: { card: cardElement }
+                    });
+                    if (error) {
+                        document.getElementById('card-errors').textContent = error.message;
+                        btn.disabled = false; btn.textContent = 'Plasează comanda →';
+                        return;
+                    }
+                    paymentIntentId = paymentIntent.id;
+                }
+
+                const orderRes = await fetch('/Cart/PlaceOrder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': CSRF },
+                    body: JSON.stringify({
+                        deliveryAddress: address,
+                        deliveryLat, deliveryLng,
+                        paymentMethod,
+                        paymentIntentId,
+                        promoCodeId,
+                        phoneNumber: document.getElementById('deliveryPhone').value.trim(),
+                        deliveryComment: document.getElementById('deliveryComment').value.trim() || null,
+                        deliveryBlock: document.getElementById('deliveryBlock').value.trim() || null,
+                        deliveryStaircase: document.getElementById('deliveryStaircase').value.trim() || null,
+                        deliveryApartment: document.getElementById('deliveryApartment').value.trim() || null
+                    })
+                });
+
+                if (!orderRes.ok) {
+                    const err = await orderRes.json().catch(() => ({}));
+                    showToast(err.error ?? 'Eroare la plasarea comenzii.', 'error');
+                    btn.disabled = false; btn.textContent = 'Plasează comanda →';
+                    return;
+                }
+                const { orderId } = await orderRes.json();
+                sessionStorage.setItem('eatup_toast', JSON.stringify({ msg: 'Comanda a fost plasată cu succes! 🎉', type: 'success' }));
+                window.location.href = '/orders/' + orderId;
+
+            } catch (e) {
+                showToast(e.message ?? 'A apărut o eroare. Încearcă din nou.', 'error');
+                btn.disabled = false; btn.textContent = 'Plasează comanda →';
+            }
+        }
+
+        function updateNavBadge(count) {
+            const badge = document.querySelector('.cart-badge .badge');
+            if (badge) { badge.textContent = count; badge.style.display = count > 0 ? '' : 'none'; }
+        }
+
+        const deliveryMap = L.map('deliveryMap').setView([@Model.MapCenterLat.ToString("0.00000", System.Globalization.CultureInfo.InvariantCulture), @Model.MapCenterLng.ToString("0.00000", System.Globalization.CultureInfo.InvariantCulture)], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(deliveryMap);
+
+        let deliveryMarker = null;
+        deliveryMap.on('click', async e => {
+            const { lat, lng } = e.latlng;
+            document.getElementById('deliveryLat').value = lat;
+            document.getElementById('deliveryLng').value = lng;
+
+            if (deliveryMarker) {
+                deliveryMarker.setLatLng([lat, lng]);
+            } else {
+                deliveryMarker = L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        html: `<div style="width:22px;height:22px;border-radius:50%;background:var(--orange);
+                                    border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35);"></div>`,
+                        className: '', iconSize: [22, 22], iconAnchor: [11, 11]
+                    })
+                }).addTo(deliveryMap)
+                  .bindPopup('<small>Locație livrare</small>').openPopup();
+            }
+
+            // reverse geocode via Nominatim to auto-fill the address field from map click coordinates
+            try {
+                const r = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ro`,
+                    { headers: { 'Accept': 'application/json' } }
+                );
+                const d = await r.json();
+                if (d.display_name) {
+                    document.getElementById('deliveryAddress').value = d.display_name;
+                }
+            } catch {
+                if (!document.getElementById('deliveryAddress').value) {
+                    document.getElementById('deliveryAddress').value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                }
+            }
+        });
+    </script>
+}

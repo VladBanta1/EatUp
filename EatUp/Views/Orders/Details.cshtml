@@ -1,0 +1,517 @@
+@model OrderTrackingViewModel
+@{
+    ViewData["Title"] = $"Comanda #{Model.Order.Id}";
+    var o = Model.Order;
+    var ic = System.Globalization.CultureInfo.InvariantCulture;
+    var hasCoords = o.DeliveryLat.HasValue && o.DeliveryLng.HasValue;
+
+    var flowSteps = new[]
+    {
+        (EatUp.Models.OrderStatus.Pending,        "⏳", "Comandă plasată",        (DateTime?)o.CreatedAt),
+        (EatUp.Models.OrderStatus.Accepted,       "✅", "Acceptată de restaurant", o.AcceptedAt),
+        (EatUp.Models.OrderStatus.Preparing,      "👨‍🍳", "Se prepară",              o.PreparingAt),
+        (EatUp.Models.OrderStatus.ReadyForPickup, "📦", "Gata de ridicare",        o.ReadyAt),
+        (EatUp.Models.OrderStatus.OutForDelivery, "🛵", "În drum spre tine",       o.OutForDeliveryAt),
+        (EatUp.Models.OrderStatus.Delivered,      "🎉", "Livrată!",                o.DeliveredAt),
+    };
+
+    bool isTerminated = o.Status == EatUp.Models.OrderStatus.Rejected
+                     || o.Status == EatUp.Models.OrderStatus.Cancelled;
+    int currentIdx = isTerminated ? -1 : Array.IndexOf(
+        flowSteps.Select(s => s.Item1).ToArray(), o.Status);
+
+    bool isDelivered = o.Status == EatUp.Models.OrderStatus.Delivered;
+    bool showMap = !isTerminated; // always show map for live orders
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+}
+
+<section class="py-4 py-lg-5">
+    <div class="container">
+
+        <div class="mb-3">
+            <a href="/orders" class="text-muted text-decoration-none" style="font-size:.85rem;">
+                ← Înapoi la comenzi
+            </a>
+        </div>
+
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
+            <div>
+                <h2 class="fw-800 mb-1" style="font-size:1.5rem;">Comanda #@o.Id</h2>
+                <p class="text-muted mb-0 small">
+                    @o.Restaurant.Name &nbsp;·&nbsp;
+                    @o.CreatedAt.ToLocalTime().ToString("dd MMM yyyy · HH:mm")
+                </p>
+            </div>
+            <div class="text-end">
+                <div class="fw-800 text-orange" style="font-size:1.4rem;">@o.Total.ToString("0.00") RON</div>
+                <div class="text-muted small">
+                    @(o.PaymentMethod == EatUp.Models.PaymentMethod.Card ? "💳 Card" : "💵 Numerar")
+                </div>
+            </div>
+        </div>
+
+        @if (isTerminated)
+        {
+            var isRejected = o.Status == EatUp.Models.OrderStatus.Rejected;
+            <div class="alert @(isRejected ? "alert-danger" : "alert-secondary") mb-4 rounded-3">
+                <strong>@(isRejected ? "❌ Comandă respinsă" : "🚫 Comandă anulată")</strong>
+                @if (!string.IsNullOrEmpty(o.RejectionReason))
+                {
+                    <div class="mt-1">Motiv: @o.RejectionReason</div>
+                }
+            </div>
+        }
+
+        <div class="row g-4 align-items-start">
+
+            <div class="col-lg-6">
+
+                @{
+                    var canCancel = o.Status == EatUp.Models.OrderStatus.Pending || o.Status == EatUp.Models.OrderStatus.Accepted;
+                    var cancelLocked = !isTerminated && !isDelivered && !canCancel;
+                }
+                @if (canCancel)
+                {
+                    <div class="mb-4" id="cancelBtnWrap">
+                        <form asp-controller="Orders" asp-action="CancelOrder" asp-route-id="@o.Id" method="post"
+                              onsubmit="return confirm('Ești sigur că vrei să anulezi comanda?');">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-danger fw-600"
+                                    style="border-radius:8px; padding:.35rem .85rem;">
+                                🚫 Anulează comanda
+                            </button>
+                        </form>
+                    </div>
+                }
+                else if (cancelLocked)
+                {
+                    <div class="mb-4" id="cancelBtnWrap">
+                        <span data-bs-toggle="tooltip" data-bs-placement="top"
+                              data-bs-title="Nu poți anula comanda deoarece restaurantul pregătește deja produsele tale."
+                              style="display:inline-block;">
+                            <button type="button" class="btn btn-sm fw-600"
+                                    style="border:1px solid #d1d5db;border-radius:8px;padding:.35rem .85rem;background:#f3f4f6;color:#9ca3af;cursor:not-allowed;pointer-events:none;">
+                                🚫 Anulează comanda
+                            </button>
+                        </span>
+                    </div>
+                }
+
+                @if (!isTerminated)
+                {
+                    <div class="cart-section mb-4">
+                        <h6 class="fw-700 mb-4">Statusul comenzii</h6>
+                        <div class="order-timeline" id="orderTimeline">
+                            @for (int i = 0; i < flowSteps.Length; i++)
+                            {
+                                var (status, emoji, label, timestamp) = flowSteps[i];
+                                string stepClass = i < currentIdx ? "done"
+                                                 : i == currentIdx ? "current"
+                                                 : "future";
+                                <div class="timeline-step @stepClass" id="tstep-@i">
+                                    <div class="timeline-dot">
+                                        @if (i < currentIdx)       { <span>✓</span> }
+                                        else if (i == currentIdx)  { <span>@emoji</span> }
+                                    </div>
+                                    @if (i < flowSteps.Length - 1)
+                                    {
+                                        <div class="timeline-line @(i < currentIdx ? "done" : "")" id="tline-@i"></div>
+                                    }
+                                    <div class="timeline-label @(i == currentIdx ? "fw-700" : "")" id="tlabel-@i">
+                                        @label
+                                        @if (timestamp.HasValue)
+                                        {
+                                            <span class="text-muted ms-1" style="font-size:.72rem;">@timestamp.Value.ToLocalTime().ToString("HH:mm")</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="cart-section mb-4">
+                    <h6 class="fw-700 mb-3">Produse comandate</h6>
+                    @foreach (var item in o.OrderItems)
+                    {
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <span class="fw-600" style="font-size:.9rem;">@item.NameSnapshot</span>
+                                <span class="text-muted ms-2" style="font-size:.82rem;">× @item.Quantity</span>
+                            </div>
+                            <span class="fw-700" style="font-size:.9rem;">
+                                @((item.PriceSnapshot * item.Quantity).ToString("0.00")) RON
+                            </span>
+                        </div>
+                    }
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between text-muted small py-1">
+                            <span>Subtotal</span><span>@o.Subtotal.ToString("0.00") RON</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small py-1">
+                            <span>Livrare</span>
+                            <span>@(o.DeliveryFee == 0 ? "Gratuită" : o.DeliveryFee.ToString("0.00") + " RON")</span>
+                        </div>
+                        @if (o.Discount > 0)
+                        {
+                            <div class="d-flex justify-content-between text-success small py-1">
+                                <span>Reducere</span><span>−@o.Discount.ToString("0.00") RON</span>
+                            </div>
+                        }
+                        <div class="d-flex justify-content-between fw-800 pt-2 mt-1 border-top">
+                            <span>Total</span>
+                            <span class="text-orange" style="font-size:1.05rem;">@o.Total.ToString("0.00") RON</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="col-lg-6">
+
+                <div class="cart-section mb-4">
+                    <h6 class="fw-700 mb-3">📍 Informații livrare</h6>
+                    <div class="text-muted small mb-1">Adresă</div>
+                    <div class="fw-600 mb-3">@o.DeliveryAddress</div>
+                    <div id="trackingMap" class="tracking-map"></div>
+                    @if (!hasCoords && !showMap)
+                    {
+                        <div class="text-muted small mt-2">
+                            <em>Coordonatele nu au fost setate la checkout.</em>
+                        </div>
+                    }
+                </div>
+
+                @if (isDelivered && !Model.HasReview)
+                {
+                    <div class="cart-section">
+                        <h6 class="fw-700 mb-3">⭐ Lasă o recenzie</h6>
+                        <p class="text-muted small mb-3">
+                            Cum a fost experiența ta cu @o.Restaurant.Name?
+                        </p>
+                        <form asp-controller="Orders" asp-action="SubmitReview" asp-route-id="@o.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <div class="mb-3">
+                                <label class="fw-600 small mb-2 d-block">Rating</label>
+                                <div class="star-rating" id="starRating">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <span class="review-star selected" data-value="@i">★</span>
+                                    }
+                                </div>
+                                <input type="hidden" name="rating" id="ratingInput" value="5" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="fw-600 small mb-2 d-block">Comentariu (opțional)</label>
+                                <textarea name="comment" rows="3" class="form-control"
+                                          placeholder="Spune-ne cum a fost…"
+                                          style="border-radius:10px; font-size:.9rem;"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-orange fw-600 px-5">
+                                Trimite recenzia
+                            </button>
+                        </form>
+                    </div>
+                }
+                else if (Model.HasReview)
+                {
+                    <div class="cart-section">
+                        <div class="text-center py-3">
+                            <div style="font-size:2rem;">✅</div>
+                            <div class="fw-700 mt-2">Recenzie trimisă</div>
+                            <div class="text-muted small mt-1">Ai acordat @Model.ExistingReview!.Rating stele. Mulțumim!</div>
+                            <div class="mt-2">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <span style="color:@(i <= Model.ExistingReview.Rating ? "#f97316" : "#cbd5e1"); font-size:1.3rem;">★</span>
+                                }
+                            </div>
+                            @if (!string.IsNullOrEmpty(Model.ExistingReview.Comment))
+                            {
+                                <div class="text-muted small mt-2 fst-italic">"@Model.ExistingReview.Comment"</div>
+                            }
+                        </div>
+                    </div>
+                }
+
+            </div>
+        </div>
+
+    </div>
+</section>
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+    <script>
+        const hasCoords = @(hasCoords ? "true" : "false");
+        const restaurantLat = @(o.Restaurant.Lat.ToString("0.00000", ic));
+        const restaurantLng = @(o.Restaurant.Lng.ToString("0.00000", ic));
+
+        @if (isDelivered)
+        {
+        <text>
+        // delivered state: restaurant marker (orange), delivery address marker (navy), dashed polyline between them
+        const trackingMap = L.map('trackingMap');
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(trackingMap);
+        window.trackingMap = trackingMap;
+
+        L.marker([restaurantLat, restaurantLng], {
+            icon: L.divIcon({
+                html: `<div style="width:26px;height:26px;border-radius:50%;background:#f97316;
+                            border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,.35);"></div>`,
+                className: '', iconSize: [26, 26], iconAnchor: [13, 13]
+            })
+        }).addTo(trackingMap).bindPopup('<small>🍽️ Restaurant</small>');
+
+        if (hasCoords) {
+            const deliveryLat = @(o.DeliveryLat?.ToString("0.00000", ic) ?? "0");
+            const deliveryLng = @(o.DeliveryLng?.ToString("0.00000", ic) ?? "0");
+            L.marker([deliveryLat, deliveryLng], {
+                icon: L.divIcon({
+                    html: `<div style="width:26px;height:26px;border-radius:50%;background:#1e3a5f;
+                                border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,.35);"></div>`,
+                    className: '', iconSize: [26, 26], iconAnchor: [13, 13]
+                })
+            }).addTo(trackingMap).bindPopup('<small>📍 Adresă livrare</small>');
+
+            L.polyline([[restaurantLat, restaurantLng], [deliveryLat, deliveryLng]], {
+                color: '#f97316', weight: 3, dashArray: '8, 8'
+            }).addTo(trackingMap);
+
+            trackingMap.fitBounds(
+                L.latLngBounds([[restaurantLat, restaurantLng], [deliveryLat, deliveryLng]]).pad(0.3)
+            );
+        } else {
+            trackingMap.setView([restaurantLat, restaurantLng], 13);
+        }
+        </text>
+        }
+        else
+        {
+        <text>
+        const defaultLat = hasCoords ? @(o.DeliveryLat?.ToString("0.00000", ic) ?? "45.9") : 45.9;
+        const defaultLng = hasCoords ? @(o.DeliveryLng?.ToString("0.00000", ic) ?? "24.9") : 24.9;
+
+        const trackingMap = L.map('trackingMap').setView([defaultLat, defaultLng], hasCoords ? 15 : 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(trackingMap);
+        window.trackingMap = trackingMap;
+
+        if (hasCoords) {
+            L.marker([defaultLat, defaultLng], {
+                icon: L.divIcon({
+                    html: `<div style="width:26px;height:26px;border-radius:50%;background:#f97316;
+                                border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,.35);"></div>`,
+                    className: '', iconSize: [26, 26], iconAnchor: [13, 13]
+                })
+            }).addTo(trackingMap).bindPopup('<small>📍 Adresă livrare</small>').openPopup();
+        }
+
+        let courierMarker = null;
+        let _cFrom = null, _cTo = null, _cStart = 0, _cRaf = null;
+
+        function _stepCourier(now) {
+            const raw = Math.min((now - _cStart) / 900, 1);
+            const t   = raw * raw * (3 - 2 * raw);     // smoothstep ease-in-out
+            courierMarker.setLatLng([
+                _cFrom[0] + (_cTo[0] - _cFrom[0]) * t,
+                _cFrom[1] + (_cTo[1] - _cFrom[1]) * t
+            ]);
+            if (1 > raw) _cRaf = requestAnimationFrame(_stepCourier);
+        }
+
+        function moveCourier(lat, lng) {
+            if (!courierMarker) {
+                courierMarker = L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        html: `<div style="width:32px;height:32px;border-radius:50%;background:#22c55e;
+                                    border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,.35);
+                                    display:flex;align-items:center;justify-content:center;
+                                    font-size:15px;line-height:1;">🛵</div>`,
+                        className: '', iconSize: [32, 32], iconAnchor: [16, 16]
+                    })
+                }).addTo(trackingMap).bindPopup('<small>🛵 Curier</small>');
+                _cFrom = [lat, lng]; _cTo = [lat, lng];
+                trackingMap.panTo([lat, lng], { animate: true, duration: 0.9 });
+                return;
+            }
+            const cur = courierMarker.getLatLng();
+            _cFrom = [cur.lat, cur.lng]; _cTo = [lat, lng];
+            _cStart = performance.now();
+            if (_cRaf) cancelAnimationFrame(_cRaf);
+            _cRaf = requestAnimationFrame(_stepCourier);
+            trackingMap.panTo([lat, lng], { animate: true, duration: 0.9 });
+        }
+
+        @if (o.CourierLat.HasValue && o.CourierLng.HasValue)
+        {
+            <text>moveCourier(@(o.CourierLat.Value.ToString("0.00000", ic)), @(o.CourierLng.Value.ToString("0.00000", ic)));</text>
+        }
+        </text>
+        }
+
+        const flowStatuses = ["Pending","Accepted","Preparing","ReadyForPickup","OutForDelivery","Delivered"];
+        const flowEmojis   = ["⏳","✅","👨‍🍳","📦","🛵","🎉"];
+
+        function updateTimeline(newStatus) {
+            const idx = flowStatuses.indexOf(newStatus);
+            if (idx === -1) return;
+
+            for (let i = 0; i < flowStatuses.length; i++) {
+                const step = document.getElementById(`tstep-${i}`);
+                if (!step) continue;
+                step.classList.remove('done', 'current', 'future');
+                step.classList.add(i < idx ? 'done' : i === idx ? 'current' : 'future');
+
+                const dot = step.querySelector('.timeline-dot');
+                if (i < idx)      dot.innerHTML = '<span>✓</span>';
+                else if (i === idx) dot.innerHTML = `<span>${flowEmojis[i]}</span>`;
+                else              dot.innerHTML = '';
+
+                const line = document.getElementById(`tline-${i}`);
+                if (line) line.classList.toggle('done', i < idx);
+
+                const label = document.getElementById(`tlabel-${i}`);
+                if (label) label.classList.toggle('fw-700', i === idx);
+            }
+
+            const now = new Date();
+            const timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+            const newCurrentLabel = document.getElementById(`tlabel-${idx}`);
+            if (newCurrentLabel) {
+                let ts = newCurrentLabel.querySelector('.live-ts');
+                if (!ts) {
+                    ts = document.createElement('span');
+                    ts.className = 'text-muted ms-1 live-ts';
+                    ts.style.fontSize = '.72rem';
+                    newCurrentLabel.appendChild(ts);
+                }
+                ts.textContent = timeStr;
+            }
+        }
+
+        @if (!isTerminated && !isDelivered)
+        {
+            <text>
+            const hubConn = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/orders")
+                .withAutomaticReconnect()
+                .build();
+
+            function lockCancelButton() {
+                const wrap = document.getElementById('cancelBtnWrap');
+                if (!wrap) return;
+                wrap.innerHTML =
+                    '<span data-bs-toggle="tooltip" data-bs-placement="top" ' +
+                    'data-bs-title="Nu poți anula comanda deoarece restaurantul pregătește deja produsele tale." ' +
+                    'style="display:inline-block;">' +
+                    '<button type="button" class="btn btn-sm fw-600" ' +
+                    'style="border:1px solid #d1d5db;border-radius:8px;padding:.35rem .85rem;background:#f3f4f6;color:#9ca3af;cursor:not-allowed;pointer-events:none;">' +
+                    '🚫 Anulează comanda</button></span>';
+                new bootstrap.Tooltip(wrap.querySelector('[data-bs-toggle="tooltip"]'));
+            }
+
+            let _custAudioCtx = null;
+            function _getAudioCtx() {
+                if (!_custAudioCtx)
+                    _custAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                return _custAudioCtx;
+            }
+            document.addEventListener('click', () => {
+                if (_custAudioCtx && _custAudioCtx.state === 'suspended') _custAudioCtx.resume();
+            }, { once: true });
+
+            // 2-note ascending chime (G5 → C6) signals a positive status update
+            function playStatusChime() {
+                try {
+                    const ctx = _getAudioCtx();
+                    if (ctx.state === 'suspended') ctx.resume();
+                    [[784, 0], [1047, 0.18]].forEach(([freq, delay]) => {
+                        const osc = ctx.createOscillator(), gain = ctx.createGain();
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.type = 'sine'; osc.frequency.value = freq;
+                        const t = ctx.currentTime + delay;
+                        gain.gain.setValueAtTime(0, t);
+                        gain.gain.linearRampToValueAtTime(0.18, t + 0.02);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+                        osc.start(t); osc.stop(t + 0.55);
+                    });
+                } catch(e) {}
+            }
+
+            // descending 2-note tone (C5 → G4) signals cancellation or rejection
+            function playCancelSound() {
+                try {
+                    const ctx = _getAudioCtx();
+                    if (ctx.state === 'suspended') ctx.resume();
+                    [[523, 0], [392, 0.25]].forEach(([freq, delay]) => {
+                        const osc = ctx.createOscillator(), gain = ctx.createGain();
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.type = 'sine'; osc.frequency.value = freq;
+                        const t = ctx.currentTime + delay;
+                        gain.gain.setValueAtTime(0, t);
+                        gain.gain.linearRampToValueAtTime(0.14, t + 0.03);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
+                        osc.start(t); osc.stop(t + 0.7);
+                    });
+                } catch(e) {}
+            }
+
+            hubConn.on("order_status_changed", (orderId, newStatus) => {
+                updateTimeline(newStatus);
+                if (newStatus === 'Preparing' || newStatus === 'ReadyForPickup' || newStatus === 'OutForDelivery') {
+                    lockCancelButton();
+                }
+                if (newStatus === 'Cancelled' || newStatus === 'Rejected') {
+                    playCancelSound();
+                } else {
+                    playStatusChime();
+                }
+                if (newStatus === 'Delivered' || newStatus === 'Rejected' || newStatus === 'Cancelled') {
+                    setTimeout(() => location.reload(), 2000);
+                }
+            });
+
+            hubConn.on("courier_location", (lat, lng) => {
+                moveCourier(lat, lng);
+            });
+
+            hubConn.start()
+                .then(() => hubConn.invoke("JoinOrderGroup", @o.Id))
+                .catch(console.error);
+            </text>
+        }
+
+        const stars = document.querySelectorAll('#starRating .review-star');
+        let selectedRating = 5;
+
+        stars.forEach(star => {
+            star.addEventListener('click', () => {
+                selectedRating = parseInt(star.dataset.value);
+                document.getElementById('ratingInput').value = selectedRating;
+                refreshStars(selectedRating);
+            });
+            star.addEventListener('mouseover', () => refreshStars(parseInt(star.dataset.value), true));
+            star.addEventListener('mouseout',  () => refreshStars(selectedRating));
+        });
+
+        function refreshStars(value, hover = false) {
+            stars.forEach(s => {
+                const v = parseInt(s.dataset.value);
+                s.classList.toggle('selected', v <= value);
+                s.style.color     = v <= value ? '#f97316' : '#cbd5e1';
+                s.style.transform = hover && v <= value ? 'scale(1.2)' : 'scale(1)';
+            });
+        }
+        refreshStars(5);
+
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+    </script>
+}

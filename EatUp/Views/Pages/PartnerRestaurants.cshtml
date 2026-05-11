@@ -1,0 +1,114 @@
+@model List<EatUp.ViewModels.RestaurantCardViewModel>
+@{
+    ViewData["Title"] = "Restaurante Partenere";
+
+    var categoryGradients = new Dictionary<string, string>
+    {
+        ["Pizza"]     = "135deg, #ff6b6b 0%, #ff8e53 100%",
+        ["Sushi"]     = "135deg, #4ecdc4 0%, #2193b0 100%",
+        ["Salate"]    = "135deg, #56ab2f 0%, #a8e063 100%",
+        ["Românesc"]  = "135deg, #c94b4b 0%, #8B0000 100%",
+        ["Fast Food"] = "135deg, #f7971e 0%, #ff4e50 100%",
+        ["Asian"]     = "135deg, #f953c6 0%, #b91d73 100%",
+        ["Mexican"]   = "135deg, #f7971e 0%, #ffd200 100%",
+        ["Cafenea"]   = "135deg, #6f4e37 0%, #c8a97a 100%",
+        ["Grill"]     = "135deg, #ff4e50 0%, #f9d423 100%",
+        ["Vegan"]     = "135deg, #11998e 0%, #38ef7d 100%",
+        ["Indian"]    = "135deg, #f7971e 0%, #e35d5b 100%",
+        ["Seafood"]   = "135deg, #1a6dff 0%, #00d2ff 100%",
+    };
+
+    string GradientFor(string cats) {
+        var first = (cats ?? "").Split(',')[0].Trim();
+        return categoryGradients.TryGetValue(first, out var g) ? g : "135deg, #667eea 0%, #764ba2 100%";
+    }
+}
+
+<section class="page-hero">
+    <div class="container">
+        <div class="page-hero-title">Restaurantele noastre partenere</div>
+        <p class="page-hero-sub">
+            Descoperă cele @Model.Count de restaurante care livrează prin EatUp.
+            Calitate garantată, livrare rapidă.
+        </p>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+
+        @if (Model.Count == 0)
+        {
+            <div class="text-center py-5">
+                <div style="font-size:3.5rem;">🍽️</div>
+                <h4 class="fw-700 mt-3 mb-2">Ne pregătim!</h4>
+                <p class="text-muted">Restaurantele partenere vor apărea în curând.</p>
+            </div>
+        }
+        else
+        {
+            <div class="row g-4">
+                @foreach (var r in Model)
+                {
+                    var cats = (string.IsNullOrEmpty(r.Categories) ? r.Category : r.Categories)
+                        .Split(',').Select(c => c.Trim()).Where(c => !string.IsNullOrEmpty(c)).ToList();
+                    var gradient = GradientFor(string.IsNullOrEmpty(r.Categories) ? r.Category : r.Categories);
+                    <div class="col-12 col-sm-6 col-xl-4">
+                        <a href="/restaurants/@r.Id" class="text-decoration-none">
+                            <div class="restaurant-card">
+                                <div class="restaurant-cover" style="background: linear-gradient(@gradient);">
+                                    @if (!string.IsNullOrEmpty(r.CoverImage))
+                                    {
+                                        <img src="@r.CoverImage" alt="" class="cover-img" />
+                                    }
+                                    <div class="restaurant-logo-badge">
+                                        @if (!string.IsNullOrEmpty(r.Logo))
+                                        { <img src="@r.Logo" alt="" /> }
+                                        else
+                                        { <span class="fw-700 text-white">@r.Name[0]</span> }
+                                    </div>
+                                    <span class="status-badge @(r.IsOpen ? "open" : "closed")">
+                                        @(r.IsOpen ? "Deschis" : "Închis")
+                                    </span>
+                                    <span class="category-tag">@cats.FirstOrDefault()</span>
+                                </div>
+                                <div class="restaurant-card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <h5 class="restaurant-card-name">@r.Name</h5>
+                                        <span class="rating-pill">★ @r.Rating.ToString("0.0")</span>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(r.City))
+                                    {
+                                        <div class="text-muted mb-1" style="font-size:.78rem;">📍 @r.City</div>
+                                    }
+                                    <p class="restaurant-card-desc">
+                                        @(r.Description.Length > 72 ? r.Description[..72] + "…" : r.Description)
+                                    </p>
+                                    <div class="restaurant-card-meta">
+                                        <span>⏱ @r.EstimatedDeliveryTime min</span>
+                                        <span>·</span>
+                                        <span>@(r.DeliveryFee == 0 ? "Livrare gratuită 🎉" : r.DeliveryFee.ToString("0") + " RON livrare")</span>
+                                        <span>·</span>
+                                        <span class="text-muted">@r.TotalReviews recenzii</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="text-center mt-5 pt-3">
+            <div class="card-eatup p-4 p-md-5 d-inline-block" style="max-width:560px;">
+                <div style="font-size:2.5rem;">🍴</div>
+                <h4 class="fw-700 mt-2 mb-2">Ești restaurant?</h4>
+                <p class="text-muted mb-4">Alătură-te rețelei EatUp și ajunge la mii de clienți din orașul tău.</p>
+                <a href="/become-partner" class="btn btn-orange fw-600 px-5 py-2" style="border-radius:12px;">
+                    Alătură-te EatUp
+                </a>
+            </div>
+        </div>
+
+    </div>
+</section>

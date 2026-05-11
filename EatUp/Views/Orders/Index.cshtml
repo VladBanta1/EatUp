@@ -1,0 +1,148 @@
+@model List<EatUp.Models.Order>
+@{
+    ViewData["Title"] = "Comenzile mele";
+    var customerId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+}
+
+@functions {
+    static string StatusLabel(EatUp.Models.OrderStatus s) => s switch {
+        EatUp.Models.OrderStatus.Pending        => "⏳ În așteptare",
+        EatUp.Models.OrderStatus.Accepted       => "✅ Acceptată",
+        EatUp.Models.OrderStatus.Preparing      => "👨‍🍳 Se prepară",
+        EatUp.Models.OrderStatus.ReadyForPickup => "📦 Gata de ridicare",
+        EatUp.Models.OrderStatus.OutForDelivery => "🛵 În drum",
+        EatUp.Models.OrderStatus.Delivered      => "🎉 Livrată",
+        EatUp.Models.OrderStatus.Rejected       => "❌ Respinsă",
+        EatUp.Models.OrderStatus.Cancelled      => "🚫 Anulată",
+        _ => s.ToString()
+    };
+
+    static string StatusClass(EatUp.Models.OrderStatus s) => s switch {
+        EatUp.Models.OrderStatus.Pending        => "status-pending",
+        EatUp.Models.OrderStatus.Accepted       => "status-accepted",
+        EatUp.Models.OrderStatus.Preparing      => "status-preparing",
+        EatUp.Models.OrderStatus.ReadyForPickup => "status-ready",
+        EatUp.Models.OrderStatus.OutForDelivery => "status-delivery",
+        EatUp.Models.OrderStatus.Delivered      => "status-delivered",
+        EatUp.Models.OrderStatus.Rejected       => "status-rejected",
+        EatUp.Models.OrderStatus.Cancelled      => "status-cancelled",
+        _ => ""
+    };
+}
+
+<section class="py-4 py-lg-5">
+    <div class="container">
+
+        <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+            <div>
+                <h2 class="fw-800 mb-1" style="font-size:1.6rem;">Comenzile mele</h2>
+                <p class="text-muted mb-0 small">@Model.Count @(Model.Count == 1 ? "comandă plasată" : "comenzi plasate")</p>
+            </div>
+            <a href="/" class="btn btn-outline-orange btn-sm fw-600 px-4">+ Comandă din nou</a>
+        </div>
+
+        <div id="skel-orders">
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+        </div>
+
+        <div id="real-orders" style="display:none;">
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5">
+                <div style="font-size:4rem; line-height:1;">📦</div>
+                <h4 class="fw-700 mt-3 mb-2">Nicio comandă plasată încă</h4>
+                <p class="text-muted">Explorează restaurantele și plasează prima ta comandă.</p>
+                <a href="/" class="btn btn-orange mt-3 px-5 fw-600">Explorează restaurante</a>
+            </div>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-3">
+                @foreach (var order in Model)
+                {
+                    <a href="/orders/@order.Id" class="text-decoration-none">
+                        <div class="order-history-card">
+                            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                                        <span class="fw-700" style="font-size:1rem;">@order.Restaurant.Name</span>
+                                        <span class="order-status-pill @StatusClass(order.Status)" id="ohist-badge-@order.Id">
+                                            @StatusLabel(order.Status)
+                                        </span>
+                                    </div>
+                                    <div class="text-muted" style="font-size:.82rem;">
+                                        @order.CreatedAt.ToLocalTime().ToString("dd MMM yyyy · HH:mm")
+                                        &nbsp;·&nbsp;
+                                        @(order.PaymentMethod == EatUp.Models.PaymentMethod.Card ? "💳 Card" : "💵 Numerar")
+                                    </div>
+                                    @if (order.OrderItems?.Any() == true)
+                                    {
+                                        <div class="text-muted mt-2" style="font-size:.82rem;">
+                                            @string.Join(", ", order.OrderItems.Take(3).Select(i => $"{i.NameSnapshot} ×{i.Quantity}"))
+                                            @if (order.OrderItems.Count > 3)
+                                            {
+                                                <text> <em>+@(order.OrderItems.Count - 3) alte</em></text>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                                <div class="text-end flex-shrink-0">
+                                    <div class="fw-800 text-orange" style="font-size:1.15rem;">
+                                        @order.Total.ToString("0.00") RON
+                                    </div>
+                                    <div class="text-muted mt-1" style="font-size:.78rem;">
+                                        #@order.Id
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                }
+            </div>
+        }
+        </div>
+
+    </div>
+</section>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(function () {
+                document.getElementById('skel-orders').style.display = 'none';
+                document.getElementById('real-orders').style.display = '';
+            }, 350);
+        });
+
+        const _slabel = {
+            Pending: '⏳ În așteptare', Accepted: '✅ Acceptată', Preparing: '👨‍🍳 Se prepară',
+            ReadyForPickup: '📦 Gata de ridicare', OutForDelivery: '🛵 În drum',
+            Delivered: '🎉 Livrată', Rejected: '❌ Respinsă', Cancelled: '🚫 Anulată'
+        };
+        const _sclass = {
+            Pending: 'status-pending', Accepted: 'status-accepted', Preparing: 'status-preparing',
+            ReadyForPickup: 'status-ready', OutForDelivery: 'status-delivery',
+            Delivered: 'status-delivered', Rejected: 'status-rejected', Cancelled: 'status-cancelled'
+        };
+
+        const histHub = new signalR.HubConnectionBuilder()
+            .withUrl('/hubs/orders')
+            .withAutomaticReconnect()
+            .build();
+
+        histHub.on('order_status_changed', (orderId, newStatus) => {
+            const badge = document.getElementById(`ohist-badge-${orderId}`);
+            if (badge) {
+                badge.className = `order-status-pill ${_sclass[newStatus] || ''}`;
+                badge.textContent = _slabel[newStatus] || newStatus;
+            }
+        });
+
+        histHub.start()
+            .then(() => histHub.invoke('JoinCustomerGroup', @customerId))
+            .catch(console.error);
+    </script>
+}

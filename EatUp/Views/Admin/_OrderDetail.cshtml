@@ -1,0 +1,82 @@
+@model EatUp.Models.Order
+@using EatUp.Models
+
+@functions {
+    static string StatusLabel(OrderStatus s) => s switch {
+        OrderStatus.Pending        => "În așteptare",
+        OrderStatus.Accepted       => "Acceptată",
+        OrderStatus.Preparing      => "Se prepară",
+        OrderStatus.ReadyForPickup => "Gata de ridicare",
+        OrderStatus.OutForDelivery => "În drum spre tine",
+        OrderStatus.Delivered      => "Livrată",
+        OrderStatus.Rejected       => "Respinsă",
+        OrderStatus.Cancelled      => "Anulată",
+        _ => s.ToString()
+    };
+}
+
+<div class="row g-3">
+    <div class="col-sm-6">
+        <div class="text-muted small fw-600 mb-1">CLIENT</div>
+        <div class="fw-600">@Model.Customer.Name</div>
+        <div class="text-muted small">@Model.Customer.Email</div>
+    </div>
+    <div class="col-sm-6">
+        <div class="text-muted small fw-600 mb-1">RESTAURANT</div>
+        <div class="fw-600">@Model.Restaurant.Name</div>
+        <div class="text-muted small">@Model.Restaurant.Address</div>
+    </div>
+    <div class="col-sm-6">
+        <div class="text-muted small fw-600 mb-1">DATA</div>
+        <div>@Model.CreatedAt.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</div>
+    </div>
+    <div class="col-sm-6">
+        <div class="text-muted small fw-600 mb-1">STATUS</div>
+        <div>@StatusLabel(Model.Status)</div>
+        @if (!string.IsNullOrEmpty(Model.RejectionReason))
+        {
+            <div class="text-danger small mt-1">@Model.RejectionReason</div>
+        }
+    </div>
+    <div class="col-12">
+        <div class="text-muted small fw-600 mb-1">ADRESĂ LIVRARE</div>
+        <div>@Model.DeliveryAddress</div>
+    </div>
+</div>
+
+<hr class="my-3" />
+
+<div class="mb-3">
+    <div class="fw-600 small mb-2">PRODUSE</div>
+    @foreach (var item in Model.OrderItems)
+    {
+        <div class="d-flex justify-content-between py-1 border-bottom" style="font-size:.88rem;">
+            <span>@item.NameSnapshot <span class="text-muted">× @item.Quantity</span></span>
+            <span class="fw-600">@((item.PriceSnapshot * item.Quantity).ToString("0.00")) RON</span>
+        </div>
+    }
+</div>
+
+<div style="font-size:.88rem;">
+    <div class="d-flex justify-content-between text-muted py-1">
+        <span>Subtotal</span><span>@Model.Subtotal.ToString("0.00") RON</span>
+    </div>
+    <div class="d-flex justify-content-between text-muted py-1">
+        <span>Livrare</span>
+        <span>@(Model.DeliveryFee == 0 ? "Gratuită" : Model.DeliveryFee.ToString("0.00") + " RON")</span>
+    </div>
+    @if (Model.Discount > 0)
+    {
+        <div class="d-flex justify-content-between text-success py-1">
+            <span>Reducere</span><span>−@Model.Discount.ToString("0.00") RON</span>
+        </div>
+    }
+    <div class="d-flex justify-content-between fw-800 pt-2 mt-1 border-top">
+        <span>Total</span>
+        <span class="text-orange" style="font-size:1.05rem;">@Model.Total.ToString("0.00") RON</span>
+    </div>
+    <div class="text-muted mt-2">
+        @(Model.PaymentMethod == PaymentMethod.Card ? "💳 Card" : "💵 Numerar")
+        · @(Model.PaymentStatus == PaymentStatus.Paid ? "Plătit" : "În așteptare")
+    </div>
+</div>

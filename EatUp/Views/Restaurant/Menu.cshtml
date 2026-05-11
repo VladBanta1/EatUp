@@ -1,0 +1,335 @@
+@model EatUp.ViewModels.MenuManagementViewModel
+@using EatUp.Models
+@{
+    ViewData["Title"] = "Gestionare Meniu";
+    var ic = System.Globalization.CultureInfo.InvariantCulture;
+}
+
+<section class="py-4 py-lg-5">
+    <div class="container">
+
+        @if ((bool?)ViewBag.HasApprovedItems == false)
+        {
+            <div class="alert d-flex align-items-start gap-3 mb-4"
+                 style="background:#fff7ed; border:1px solid #fed7aa; border-left:4px solid #f97316; border-radius:12px;">
+                <span style="font-size:1.25rem; flex-shrink:0; line-height:1.4;">⚠️</span>
+                <div>
+                    <strong>Restaurantul tău nu este vizibil publicului.</strong>
+                    <div class="small mt-1 text-muted">
+                        Adaugă cel puțin un produs aprobat pentru a apărea în lista de restaurante.
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+            <div>
+                <h2 class="fw-800 mb-1" style="font-size:1.5rem;">Meniu — @Model.Restaurant.Name</h2>
+                <p class="text-muted mb-0 small">Modificările sunt trimise spre aprobare adminului.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a asp-action="ChangeRequests" class="btn btn-outline-orange btn-sm position-relative">
+                    Cereri trimise
+                    @if (Model.PendingRequestCount > 0)
+                    {
+                        <span class="badge bg-orange ms-1">@Model.PendingRequestCount</span>
+                    }
+                </a>
+                <button class="btn btn-orange btn-sm" onclick="openAddItemModal(null)">
+                    + Produs nou
+                </button>
+            </div>
+        </div>
+
+        <div id="categoryList">
+            @foreach (var cg in Model.Categories)
+            {
+                <div class="menu-category-block mb-4" data-cat-id="@cg.Category.Id">
+                    <div class="menu-cat-header d-flex align-items-center gap-2 mb-3">
+                        <span class="drag-handle text-muted me-1" title="Trage pentru a reordona" style="cursor:grab;">⠿</span>
+                        <span class="menu-cat-name fw-700" style="font-size:1rem;"
+                              data-cat-id="@cg.Category.Id" contenteditable="true"
+                              spellcheck="false">@cg.Category.Name</span>
+                        <span class="text-muted small ms-1">(@cg.Items.Count produse)</span>
+                        <div class="ms-auto d-flex gap-2">
+                            <button class="btn btn-sm btn-orange"
+                                    onclick="openAddItemModal(@cg.Category.Id)">+ Produs</button>
+                            <button class="btn btn-sm btn-outline-danger"
+                                    onclick="deleteCategory(@cg.Category.Id, this)">Șterge</button>
+                        </div>
+                    </div>
+
+                    @if (cg.Items.Count == 0)
+                    {
+                        <div class="text-muted small ps-3 mb-2 fst-italic">Niciun produs în această categorie.</div>
+                    }
+                    else
+                    {
+                        <div class="row g-3 ps-3">
+                            @foreach (var row in cg.Items)
+                            {
+                                <div class="col-sm-6 col-lg-4">
+                                    <div class="menu-item-card @(row.HasPending ? "has-pending" : "")">
+                                        @if (row.Item.Image != null)
+                                        {
+                                            <img src="@row.Item.Image" alt="@row.Item.Name" class="menu-item-img" />
+                                        }
+                                        else
+                                        {
+                                            <div class="menu-item-img-placeholder">🍽️</div>
+                                        }
+                                        <div class="menu-item-body">
+                                            <div class="menu-item-name fw-600">@row.Item.Name</div>
+                                            @if (!string.IsNullOrEmpty(row.Item.Description))
+                                            {
+                                                <div class="menu-item-desc text-muted">@row.Item.Description</div>
+                                            }
+                                            <div class="menu-item-price text-orange fw-700">@row.Item.Price.ToString("0.00") RON</div>
+
+                                            @if (row.HasPending)
+                                            {
+                                                <span class="badge badge-pending">
+                                                    ⏳ @(row.PendingType == ChangeRequestType.Delete ? "Ștergere în așteptare" : "Modificare în așteptare")
+                                                </span>
+                                            }
+
+                                            <div class="d-flex align-items-center gap-2 mt-2">
+                                                <div class="form-check form-switch mb-0">
+                                                    <input class="form-check-input" type="checkbox"
+                                                           id="avail-@row.Item.Id"
+                                                           @(row.Item.IsAvailable ? "checked" : "")
+                                                           onchange="toggleAvailability(@row.Item.Id, this)" />
+                                                    <label class="form-check-label small text-muted"
+                                                           for="avail-@row.Item.Id">
+                                                        @(row.Item.IsAvailable ? "Disponibil" : "Indisponibil")
+                                                    </label>
+                                                </div>
+                                                <div class="ms-auto d-flex gap-1">
+                                                    @if (!row.HasPending)
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-orange py-0 px-2"
+                                                                onclick="openEditItemModal(@row.Item.Id, '@Html.Raw(row.Item.Name.Replace("'", "\\'"))', @row.Item.Price.ToString("0.00", ic), @row.Item.CategoryId, '@(row.Item.Description?.Replace("'","\\'")??"")','@(row.Item.Image??"")')">
+                                                            Editează
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger py-0 px-2"
+                                                                onclick="requestDelete(@row.Item.Id, '@Html.Raw(row.Item.Name.Replace("'", "\\'"))')">
+                                                            Șterge
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="cart-section mt-4" style="max-width:480px;">
+            <h6 class="fw-700 mb-3">Adaugă categorie nouă</h6>
+            <div class="d-flex gap-2">
+                <input type="text" id="newCatName" class="form-control" placeholder="ex: Paste, Supe, Deserturi…" maxlength="100" />
+                <button class="btn btn-orange px-4" onclick="addCategory()">Adaugă</button>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<div class="modal fade" id="itemModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:520px;">
+        <div class="modal-content" style="border-radius:16px; border:none;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-700" id="itemModalTitle">Adaugă produs</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <form id="itemForm" enctype="multipart/form-data">
+                    <input type="hidden" id="iType" name="Type" value="0" />
+                    <input type="hidden" id="iMenuItemId" name="MenuItemId" value="" />
+
+                    <div class="mb-3">
+                        <label class="fw-600 small mb-1 d-block">Nume produs *</label>
+                        <input type="text" id="iName" name="Name" class="form-control" maxlength="200" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-600 small mb-1 d-block">Descriere (opțional)</label>
+                        <textarea id="iDesc" name="Description" rows="2" class="form-control"
+                                  placeholder="Ingrediente, alergeni…" style="resize:none;"></textarea>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="fw-600 small mb-1 d-block">Preț (RON) *</label>
+                            <input type="number" id="iPrice" name="Price" class="form-control"
+                                   min="0.01" step="0.01" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="fw-600 small mb-1 d-block">Categorie *</label>
+                            <select id="iCategory" name="CategoryId" class="form-select">
+                                @foreach (var cg in Model.Categories)
+                                {
+                                    <option value="@cg.Category.Id">@cg.Category.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-600 small mb-1 d-block">Imagine (opțional)</label>
+                        <div id="imgPreviewWrap" class="mb-2 d-none">
+                            <img id="imgPreview" src="" alt="" style="height:80px;border-radius:8px;object-fit:cover;" />
+                        </div>
+                        <input type="file" id="iImage" name="Image" class="form-control" accept=".jpg,.jpeg,.png,.webp"
+                               onchange="previewImage(this)" />
+                        <div class="text-muted small mt-1">JPG, PNG sau WebP, max 5 MB</div>
+                    </div>
+                    <div class="alert alert-warning small py-2 px-3 mb-0" style="border-radius:10px;">
+                        Modificarea va fi trimisă adminului spre aprobare.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Anulează</button>
+                <button type="button" class="btn btn-orange fw-600 px-4" onclick="submitItemForm()">
+                    Trimite spre aprobare
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+const csrfToken = document.querySelector('meta[name="request-verification-token"]').content;
+
+function fetchPost(url, body, isForm = false) {
+    const opts = {
+        method: 'POST',
+        headers: isForm
+            ? { 'RequestVerificationToken': csrfToken }
+            : { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken }
+    };
+    opts.body = isForm ? body : JSON.stringify(body);
+    return fetch(url, opts).then(r => r.json());
+}
+
+document.querySelectorAll('.menu-cat-name').forEach(el => {
+    el.addEventListener('blur', async () => {
+        const id = parseInt(el.dataset.catId);
+        const name = el.textContent.trim();
+        if (!name) { el.textContent = el.dataset.orig || ''; return; }
+        const res = await fetchPost('/Restaurant/UpdateCategory', { id, name });
+        if (!res.ok) { showToast(res.error || 'Eroare', 'error'); el.textContent = el.dataset.orig || ''; }
+        else { el.dataset.orig = name; showToast('Categorie actualizată.'); }
+    });
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
+    el.dataset.orig = el.textContent.trim();
+});
+
+async function addCategory() {
+    const input = document.getElementById('newCatName');
+    const name = input.value.trim();
+    if (!name) { showToast('Introduceți un nume.', 'error'); return; }
+    const res = await fetchPost('/Restaurant/AddCategory', { name });
+    if (!res.ok) { showToast(res.error || 'Eroare', 'error'); return; }
+    showToast('Categorie adăugată!');
+    input.value = '';
+    location.reload();
+}
+
+async function deleteCategory(id, btn) {
+    if (!confirm('Ești sigur că vrei să ștergi această categorie?')) return;
+    const res = await fetchPost('/Restaurant/DeleteCategory', { id });
+    if (!res.ok) { showToast(res.error || 'Eroare', 'error'); return; }
+    btn.closest('.menu-category-block').remove();
+    showToast('Categorie ștearsă.');
+}
+
+async function toggleAvailability(id, checkbox) {
+    const res = await fetchPost('/Restaurant/ToggleAvailability', { id });
+    if (!res.ok) { showToast(res.error || 'Eroare', 'error'); checkbox.checked = !checkbox.checked; return; }
+    const label = checkbox.nextElementSibling;
+    if (label) label.textContent = res.isAvailable ? 'Disponibil' : 'Indisponibil';
+}
+
+const itemModal = new bootstrap.Modal(document.getElementById('itemModal'));
+
+function openAddItemModal(categoryId) {
+    document.getElementById('itemModalTitle').textContent = 'Adaugă produs';
+    document.getElementById('iType').value = '0'; // Create
+    document.getElementById('iMenuItemId').value = '';
+    document.getElementById('iName').value = '';
+    document.getElementById('iDesc').value = '';
+    document.getElementById('iPrice').value = '';
+    document.getElementById('iImage').value = '';
+    document.getElementById('imgPreviewWrap').classList.add('d-none');
+    if (categoryId) document.getElementById('iCategory').value = categoryId;
+    itemModal.show();
+}
+
+function openEditItemModal(id, name, price, catId, desc, img) {
+    document.getElementById('itemModalTitle').textContent = 'Editează produs';
+    document.getElementById('iType').value = '1'; // Update
+    document.getElementById('iMenuItemId').value = id;
+    document.getElementById('iName').value = name;
+    document.getElementById('iDesc').value = desc;
+    document.getElementById('iPrice').value = price;
+    document.getElementById('iCategory').value = catId;
+    document.getElementById('iImage').value = '';
+    const wrap = document.getElementById('imgPreviewWrap');
+    const preview = document.getElementById('imgPreview');
+    if (img) { preview.src = img; wrap.classList.remove('d-none'); }
+    else { wrap.classList.add('d-none'); }
+    itemModal.show();
+}
+
+function previewImage(input) {
+    const wrap = document.getElementById('imgPreviewWrap');
+    const preview = document.getElementById('imgPreview');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => { preview.src = e.target.result; wrap.classList.remove('d-none'); };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+async function submitItemForm() {
+    const form = document.getElementById('itemForm');
+    const name = document.getElementById('iName').value.trim();
+    const price = parseFloat(document.getElementById('iPrice').value);
+    if (!name) { showToast('Introduceți un nume.', 'error'); return; }
+    if (!price || price <= 0) { showToast('Introduceți un preț valid.', 'error'); return; }
+
+    const formData = new FormData(form);
+    const res = await fetchPost('/Restaurant/SubmitChangeRequest', formData, true);
+    if (!res.ok) { showToast(res.error || 'Eroare la trimitere.', 'error'); return; }
+    itemModal.hide();
+    showToast('Cerere trimisă spre aprobare!');
+    setTimeout(() => location.reload(), 1200);
+}
+
+async function requestDelete(id, name) {
+    if (!confirm(`Trimiți cerere de ștergere pentru "${name}"?`)) return;
+    const res = await fetchPost('/Restaurant/RequestDelete', { id });
+    if (!res.ok) { showToast(res.error || 'Eroare', 'error'); return; }
+    showToast('Cerere de ștergere trimisă.');
+    setTimeout(() => location.reload(), 1000);
+}
+
+const catList = document.getElementById('categoryList');
+if (catList) {
+    Sortable.create(catList, {
+        handle: '.drag-handle',
+        animation: 150,
+        onEnd: async () => {
+            const ids = [...catList.querySelectorAll('.menu-category-block')]
+                .map(el => parseInt(el.dataset.catId));
+            await fetchPost('/Restaurant/ReorderCategories', { ids });
+        }
+    });
+}
+</script>
+}

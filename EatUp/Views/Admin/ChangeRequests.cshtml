@@ -1,0 +1,247 @@
+@model List<EatUp.Models.MenuItemChangeRequest>
+@using EatUp.Models
+@{
+    ViewData["Title"] = "Cereri modificare meniu";
+    string currentFilter = ViewBag.Filter ?? "pending";
+    int pendingCount = ViewBag.PendingCount ?? 0;
+}
+
+@functions {
+    static string TypeLabel(ChangeRequestType t) => t switch {
+        ChangeRequestType.Create => "Produs nou",
+        ChangeRequestType.Update => "Modificare",
+        ChangeRequestType.Delete => "Ștergere",
+        _ => t.ToString()
+    };
+    static string TypeClass(ChangeRequestType t) => t switch {
+        ChangeRequestType.Create => "bg-success",
+        ChangeRequestType.Update => "bg-primary",
+        ChangeRequestType.Delete => "bg-danger",
+        _ => "bg-secondary"
+    };
+    static string StatusLabel(ChangeRequestStatus s) => s switch {
+        ChangeRequestStatus.Pending  => "În așteptare",
+        ChangeRequestStatus.Approved => "Aprobată",
+        ChangeRequestStatus.Rejected => "Respinsă",
+        _ => s.ToString()
+    };
+    static string StatusClass(ChangeRequestStatus s) => s switch {
+        ChangeRequestStatus.Pending  => "badge-pending",
+        ChangeRequestStatus.Approved => "badge-approved",
+        ChangeRequestStatus.Rejected => "badge-rejected",
+        _ => ""
+    };
+}
+
+<section class="py-4 py-lg-5">
+    <div class="container">
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+            <div>
+                <h2 class="fw-800 mb-1" style="font-size:1.5rem;">
+                    Cereri modificare meniu
+                    @if (pendingCount > 0)
+                    {
+                        <span class="badge ms-2" style="background:var(--orange); font-size:.55em; vertical-align:middle;">
+                            @pendingCount
+                        </span>
+                    }
+                </h2>
+                <p class="text-muted mb-0 small">Aprobă sau respinge cererile restaurantelor.</p>
+            </div>
+        </div>
+
+        <ul class="nav nav-tabs mb-4">
+            <li class="nav-item">
+                <a class="nav-link @(currentFilter == "pending" ? "active" : "")"
+                   asp-action="ChangeRequests" asp-route-filter="pending">
+                    În așteptare
+                    @if (pendingCount > 0)
+                    {
+                        <span class="badge ms-1" style="background:var(--orange); font-size:.7em;">@pendingCount</span>
+                    }
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(currentFilter == "all" ? "active" : "")"
+                   asp-action="ChangeRequests" asp-route-filter="all">
+                    Toate
+                </a>
+            </li>
+        </ul>
+
+        @if (!Model.Any())
+        {
+            <div class="cart-section text-center py-5">
+                <div style="font-size:2.5rem; margin-bottom:.75rem;">✅</div>
+                <div class="fw-600 mb-1">
+                    @(currentFilter == "pending" ? "Nicio cerere în așteptare" : "Nicio cerere găsită")
+                </div>
+                <div class="text-muted small">Toate cererile au fost procesate.</div>
+            </div>
+        }
+        else
+        {
+            <div class="cart-section">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size:.9rem;">
+                        <thead style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
+                            <tr>
+                                <th class="fw-600 py-3">Restaurant</th>
+                                <th class="fw-600 py-3">Produs</th>
+                                <th class="fw-600 py-3">Tip</th>
+                                <th class="fw-600 py-3">Data</th>
+                                <th class="fw-600 py-3">Status</th>
+                                <th class="fw-600 py-3 text-end">Acțiuni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var cr in Model)
+                            {
+                                Dictionary<string, object>? proposed = null;
+                                try { proposed = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(cr.ProposedDataJson); } catch {}
+                                var productName = proposed != null && proposed.TryGetValue("name", out var n) ? n?.ToString() ?? "—" : "—";
+                                var productPrice = proposed != null && proposed.TryGetValue("price", out var p) ? p?.ToString() ?? "—" : "—";
+                                var productDesc = proposed != null && proposed.TryGetValue("description", out var d) ? d?.ToString() : null;
+                                var productImg = proposed != null && proposed.TryGetValue("image", out var img) ? img?.ToString() : null;
+
+                                <tr>
+                                    <td>
+                                        <span class="fw-600">@cr.Restaurant.Name</span>
+                                    </td>
+                                    <td>
+                                        <span class="fw-500">@productName</span>
+                                        @if (cr.MenuItem != null && cr.Type == ChangeRequestType.Update)
+                                        {
+                                            <div class="text-muted" style="font-size:.78rem;">
+                                                Actual: @cr.MenuItem.Name — @cr.MenuItem.Price.ToString("0.00") RON
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @TypeClass(cr.Type)" style="font-size:.75rem;">
+                                            @TypeLabel(cr.Type)
+                                        </span>
+                                    </td>
+                                    <td class="text-muted small">@cr.CreatedAt.ToLocalTime().ToString("dd MMM · HH:mm")</td>
+                                    <td>
+                                        <span class="cr-status-badge @StatusClass(cr.Status)">
+                                            @StatusLabel(cr.Status)
+                                        </span>
+                                        @if (!string.IsNullOrEmpty(cr.AdminNote))
+                                        {
+                                            <div class="text-muted" style="font-size:.75rem; max-width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"
+                                                 title="@cr.AdminNote">@cr.AdminNote</div>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        @if (cr.Status == ChangeRequestStatus.Pending)
+                                        {
+                                            <button class="btn btn-sm btn-orange me-1"
+                                                    onclick="openPreview(@cr.Id, '@Html.Raw(cr.Restaurant.Name.Replace("'","\\'"  ))', '@Html.Raw(TypeLabel(cr.Type))', '@Html.Raw(productName.Replace("'","\\'" ))', '@(productPrice)', '@Html.Raw((productDesc??"").Replace("'","\\'" ).Replace("\n"," "))', '@Html.Raw((productImg??""))', '@(cr.Type == ChangeRequestType.Update && cr.MenuItem != null ? cr.MenuItem.Name : "")', '@(cr.Type == ChangeRequestType.Update && cr.MenuItem != null ? cr.MenuItem.Price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) : "")', '@(cr.Type == ChangeRequestType.Update && cr.MenuItem != null ? (cr.MenuItem.Image??""  ) : "")', '@Html.Raw(cr.Type == ChangeRequestType.Update && cr.MenuItem != null ? (cr.MenuItem.Description??"").Replace("'","\\'" ).Replace("\n"," ") : "")')">
+                                                Detalii / Aprobă
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                    onclick="openReject(@cr.Id, '@Html.Raw(productName.Replace("'","\\'" ))')">
+                                                Respinge
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+    </div>
+</section>
+
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:540px;">
+        <div class="modal-content" style="border-radius:16px; border:none;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-700" id="previewTitle">Detalii cerere</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewBody"></div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Închide</button>
+                <form id="approveForm" method="post" style="display:inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-orange fw-600 px-4">Aprobă</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
+        <div class="modal-content" style="border-radius:16px; border:none;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-700">Respinge cererea</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3" id="rejectProductName"></p>
+                <form id="rejectForm" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label class="fw-600 small mb-1 d-block">Motiv (opțional)</label>
+                        <textarea name="note" rows="3" class="form-control"
+                                  placeholder="Explică motivul respingerii…"
+                                  style="resize:none; border-radius:10px;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-danger fw-600 w-100">Respinge cererea</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+const rejectModal  = new bootstrap.Modal(document.getElementById('rejectModal'));
+
+function openPreview(id, restaurant, type, name, price, desc, img, prevName, prevPrice, prevImg, prevDesc) {
+    document.getElementById('previewTitle').textContent = `${type} — ${restaurant}`;
+    document.getElementById('approveForm').action = `/Admin/ApproveChangeRequest?id=${id}`;
+
+    let html = '';
+
+    // existing image data, populated only for Update-type change requests
+    if (prevName) {
+        html += `<div class="mb-3"><div class="text-muted small fw-600 mb-1">ACTUAL</div>
+            <div class="p-3 rounded-3" style="background:#f1f5f9;">
+                ${prevImg ? `<img src="${prevImg}" style="height:56px;border-radius:8px;object-fit:cover;margin-bottom:.5rem;display:block;" />` : ''}
+                <div class="fw-700">${prevName}</div>
+                ${prevDesc ? `<div class="text-muted small mt-1">${prevDesc}</div>` : ''}
+                <div class="text-orange fw-700 mt-1">${prevPrice} RON</div>
+            </div></div>`;
+        html += `<div class="text-center text-muted mb-3">↓ devine ↓</div>`;
+    }
+
+    html += `<div class="mb-3"><div class="text-muted small fw-600 mb-1">${prevName ? 'PROPUS' : 'DETALII PRODUS'}</div>
+        <div class="p-3 rounded-3" style="background:#f0fdf4; border:1px solid #bbf7d0;">
+            ${img ? `<img src="${img}" style="height:56px;border-radius:8px;object-fit:cover;margin-bottom:.5rem;display:block;" />` : ''}
+            <div class="fw-700">${name}</div>
+            ${desc ? `<div class="text-muted small mt-1">${desc}</div>` : ''}
+            <div class="text-orange fw-700 mt-1">${price} RON</div>
+        </div></div>`;
+
+    document.getElementById('previewBody').innerHTML = html;
+    previewModal.show();
+}
+
+function openReject(id, name) {
+    document.getElementById('rejectProductName').textContent = `Produs: ${name}`;
+    document.getElementById('rejectForm').action = `/Admin/RejectChangeRequest?id=${id}`;
+    rejectModal.show();
+}
+</script>
+}

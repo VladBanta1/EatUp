@@ -1,0 +1,111 @@
+@model List<EatUp.ViewModels.RestaurantCardViewModel>
+@{
+    ViewData["Title"] = "Restaurantele mele favorite";
+    var categoryGradients = new Dictionary<string, string>
+    {
+        ["Pizza"]="135deg,#ff6b6b,#ff8e53", ["Sushi"]="135deg,#4ecdc4,#2193b0",
+        ["Burger"]="135deg,#f7971e,#ffd200", ["Salads"]="135deg,#56ab2f,#a8e063",
+        ["Romanian"]="135deg,#c94b4b,#8B0000", ["Asian"]="135deg,#f953c6,#b91d73",
+        ["Italian"]="135deg,#009fff,#ec2f4b", ["Fast Food"]="135deg,#f7971e,#ff4e50",
+        ["Desserts"]="135deg,#da22ff,#9733ee",
+    };
+    string GradientFor(string cat) =>
+        categoryGradients.TryGetValue(cat, out var g) ? g : "135deg,#667eea,#764ba2";
+}
+
+<section class="py-5">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <h2 class="fw-700 mb-0" style="font-size:1.5rem;">Restaurante favorite</h2>
+            @if (Model.Any())
+            {
+                <span class="text-muted small">@Model.Count restaurante salvate</span>
+            }
+        </div>
+
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5">
+                <div style="font-size:4rem;">🤍</div>
+                <h4 class="fw-700 mt-3 mb-2">Niciun restaurant salvat</h4>
+                <p class="text-muted">Apasă ❤️ pe paginile restaurantelor pentru a le salva.</p>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-orange mt-2 px-4">
+                    Explorează restaurante
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="row g-4">
+                @foreach (var r in Model)
+                {
+                    <div class="col-12 col-sm-6 col-xl-4">
+                        <div style="position:relative;">
+                            <a href="/restaurants/@r.Id" class="text-decoration-none">
+                                <div class="restaurant-card">
+                                    <div class="restaurant-cover"
+                                         style="background: linear-gradient(@GradientFor(r.Category));">
+                                        @if (!string.IsNullOrEmpty(r.CoverImage))
+                                        {
+                                            <img src="@r.CoverImage" alt="" class="cover-img" />
+                                        }
+                                        <div class="restaurant-logo-badge">
+                                            @if (!string.IsNullOrEmpty(r.Logo))
+                                            { <img src="@r.Logo" alt="" /> }
+                                            else
+                                            { <span class="fw-700 text-white">@r.Name[0]</span> }
+                                        </div>
+                                        <span class="status-badge @(r.IsOpen ? "open" : "closed")">
+                                            @(r.IsOpen ? "Deschis" : "Închis")
+                                        </span>
+                                        <span class="category-tag">@r.Category</span>
+                                    </div>
+                                    <div class="restaurant-card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-1">
+                                            <h5 class="restaurant-card-name">@r.Name</h5>
+                                            <span class="rating-pill">★ @r.Rating.ToString("0.0")</span>
+                                        </div>
+                                        <p class="restaurant-card-desc">
+                                            @(r.Description.Length > 72 ? r.Description[..72] + "…" : r.Description)
+                                        </p>
+                                        <div class="restaurant-card-meta">
+                                            <span>⏱ @r.EstimatedDeliveryTime min</span>
+                                            <span>🚚 @(r.DeliveryFee == 0 ? "Gratuit" : r.DeliveryFee + " RON")</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                            <button class="btn-unfav" data-id="@r.Id" title="Elimină din favorite"
+                                    onclick="removeFav(event, @r.Id, this)">❤️</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@section Scripts {
+<script>
+const csrfToken = document.querySelector('meta[name="request-verification-token"]').content;
+
+async function removeFav(e, id, btn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const res = await fetch(`/restaurants/favorite/${id}`, {
+        method: 'POST',
+        headers: { 'RequestVerificationToken': csrfToken }
+    });
+    if (res.ok) {
+        const card = btn.closest('[style]');
+        card.style.opacity = '0';
+        card.style.transition = 'opacity .3s';
+        setTimeout(() => {
+            card.remove();
+            const remaining = document.querySelectorAll('.btn-unfav').length;
+            if (remaining === 0) location.reload();
+        }, 300);
+    }
+}
+</script>
+}

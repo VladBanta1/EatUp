@@ -1,0 +1,16 @@
+@{ ViewData["Title"] = "Acces interzis"; }
+
+<div class="auth-page">
+    <div class="auth-card text-center" style="max-width:480px;">
+        <div style="font-size:3.5rem; margin-bottom:1rem;">🔒</div>
+        <h2 class="fw-700 mb-2" style="font-size:1.4rem;">403 — Acces interzis</h2>
+        <p class="text-muted mb-4" style="font-size:.9rem; line-height:1.6;">
+            Nu ai permisiunea de a accesa această pagină.
+            Dacă ai ajuns aici din greșeală, întoarce-te sau autentifică-te cu contul potrivit.
+        </p>
+        <div class="d-flex gap-2 justify-content-center">
+            <a asp-controller="Home" asp-action="Index" class="btn btn-orange px-4">Acasă</a>
+            <a asp-controller="Account" asp-action="Login" class="btn btn-outline-orange px-4">Autentificare</a>
+        </div>
+    </div>
+</div>

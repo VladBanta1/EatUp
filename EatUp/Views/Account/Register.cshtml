@@ -1,0 +1,69 @@
+@model RegisterViewModel
+@{ ViewData["Title"] = "Înregistrare"; }
+
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-logo">EatUp</div>
+        <p class="auth-subtitle">Creează-ți contul de client și comandă în câteva secunde.</p>
+
+        <form asp-action="Register" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label">Nume complet</label>
+                <input asp-for="Name" class="form-control" placeholder="Ion Popescu" autocomplete="name" />
+                <span asp-validation-for="Name" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label">Email</label>
+                <input asp-for="Email" class="form-control" placeholder="exemplu@email.com" autocomplete="email" />
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Phone" class="form-label">Telefon <span class="text-muted fw-normal">(opțional)</span></label>
+                <input asp-for="Phone" class="form-control" placeholder="07xx xxx xxx" autocomplete="tel" />
+                <span asp-validation-for="Phone" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label">Parolă</label>
+                <input asp-for="Password" class="form-control" placeholder="Minim 6 caractere" autocomplete="new-password" />
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ConfirmPassword" class="form-label">Confirmă parola</label>
+                <input asp-for="ConfirmPassword" class="form-control" placeholder="Repetă parola" autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="City" class="form-label">Orașul tău *</label>
+                <select asp-for="City" class="form-select" required>
+                    <option value="">Selectează orașul...</option>
+                    <option value="București">București</option>
+                    <option value="Craiova">Craiova</option>
+                </select>
+                <span asp-validation-for="City" class="text-danger small"></span>
+                <div class="text-muted small mt-1">Folosit pentru a filtra restaurantele din orașul tău.</div>
+            </div>
+
+            <button type="submit" class="btn btn-orange w-100 py-2 mb-3">Creează cont</button>
+
+            <p class="text-center mb-0" style="font-size:.875rem; color:var(--gray-600);">
+                Ai deja cont?
+                <a asp-action="Login" class="text-orange fw-600 text-decoration-none">Autentifică-te</a>
+            </p>
+            <p class="text-center mt-3 mb-0 pt-3 border-top" style="font-size:.875rem; color:var(--gray-600);">
+                Ești proprietar de restaurant?
+                <a asp-action="RegisterRestaurant" class="text-orange fw-600 text-decoration-none">Înregistrează-ți restaurantul</a>
+            </p>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

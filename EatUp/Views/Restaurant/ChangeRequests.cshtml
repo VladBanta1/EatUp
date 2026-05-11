@@ -1,0 +1,112 @@
+@model List<EatUp.Models.MenuItemChangeRequest>
+@using EatUp.Models
+@{
+    ViewData["Title"] = "Cereri de modificare";
+    var restaurant = (EatUp.Models.Restaurant)ViewBag.Restaurant;
+}
+
+@functions {
+    static string TypeLabel(ChangeRequestType t) => t switch {
+        ChangeRequestType.Create => "Produs nou",
+        ChangeRequestType.Update => "Modificare",
+        ChangeRequestType.Delete => "Ștergere",
+        _ => t.ToString()
+    };
+    static string TypeClass(ChangeRequestType t) => t switch {
+        ChangeRequestType.Create => "bg-success",
+        ChangeRequestType.Update => "bg-primary",
+        ChangeRequestType.Delete => "bg-danger",
+        _ => "bg-secondary"
+    };
+    static string StatusLabel(ChangeRequestStatus s) => s switch {
+        ChangeRequestStatus.Pending  => "În așteptare",
+        ChangeRequestStatus.Approved => "Aprobată",
+        ChangeRequestStatus.Rejected => "Respinsă",
+        _ => s.ToString()
+    };
+    static string StatusClass(ChangeRequestStatus s) => s switch {
+        ChangeRequestStatus.Pending  => "badge-pending",
+        ChangeRequestStatus.Approved => "badge-approved",
+        ChangeRequestStatus.Rejected => "badge-rejected",
+        _ => ""
+    };
+}
+
+<section class="py-4 py-lg-5">
+    <div class="container">
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+            <div>
+                <h2 class="fw-800 mb-1" style="font-size:1.5rem;">Cereri de modificare</h2>
+                <p class="text-muted mb-0 small">Istoricul cererilor trimise de @restaurant.Name</p>
+            </div>
+            <a asp-action="Menu" class="btn btn-outline-orange btn-sm">← Înapoi la meniu</a>
+        </div>
+
+        @if (!Model.Any())
+        {
+            <div class="cart-section text-center py-5">
+                <div style="font-size:2.5rem; margin-bottom:.75rem;">📋</div>
+                <div class="fw-600 mb-1">Nicio cerere trimisă</div>
+                <div class="text-muted small">Adaugă sau modifică produse din meniu pentru a trimite cereri.</div>
+                <a asp-action="Menu" class="btn btn-orange mt-3">Gestionare meniu</a>
+            </div>
+        }
+        else
+        {
+            <div class="cart-section">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size:.9rem;">
+                        <thead style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
+                            <tr>
+                                <th class="fw-600 py-3">Produs</th>
+                                <th class="fw-600 py-3">Tip</th>
+                                <th class="fw-600 py-3">Data trimiterii</th>
+                                <th class="fw-600 py-3">Status</th>
+                                <th class="fw-600 py-3">Notă admin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var cr in Model)
+                            {
+                                var proposed = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(cr.ProposedDataJson);
+                                var productName = proposed != null && proposed.TryGetValue("name", out var n) ? n?.ToString() ?? "—" : "—";
+                                <tr>
+                                    <td>
+                                        <span class="fw-600">@productName</span>
+                                        @if (cr.MenuItem != null)
+                                        {
+                                            <div class="text-muted" style="font-size:.78rem;">ID: @cr.MenuItem.Id</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @TypeClass(cr.Type)" style="font-size:.75rem;">
+                                            @TypeLabel(cr.Type)
+                                        </span>
+                                    </td>
+                                    <td class="text-muted">@cr.CreatedAt.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</td>
+                                    <td>
+                                        <span class="cr-status-badge @StatusClass(cr.Status)">
+                                            @StatusLabel(cr.Status)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(cr.AdminNote))
+                                        {
+                                            <span class="text-muted fst-italic" style="font-size:.85rem;">@cr.AdminNote</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+    </div>
+</section>

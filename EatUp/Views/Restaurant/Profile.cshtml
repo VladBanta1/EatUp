@@ -1,0 +1,212 @@
+@using EatUp.Controllers
+@model RestaurantProfileForm
+@using EatUp.ViewModels
+@{
+    ViewData["Title"] = "Profil Restaurant";
+    var restaurant = ViewBag.Restaurant as EatUp.Models.Restaurant;
+
+    var categories = new[] { "Pizza", "Sushi", "Salate", "Românesc", "Fast Food", "Asian", "Mexican", "Cafenea", "Grill", "Vegan", "Indian", "Seafood" };
+
+    string DayLabel(string day) => day switch {
+        "Monday"    => "Luni",
+        "Tuesday"   => "Marți",
+        "Wednesday" => "Miercuri",
+        "Thursday"  => "Joi",
+        "Friday"    => "Vineri",
+        "Saturday"  => "Sâmbătă",
+        "Sunday"    => "Duminică",
+        _ => day
+    };
+}
+
+<section class="py-4 py-lg-5">
+    <div class="container" style="max-width:900px;">
+
+        <h2 class="fw-800 mb-4" style="font-size:1.5rem;">
+            ⚙️ Profil Restaurant
+            @if (restaurant != null)
+            {
+                <span class="text-muted fw-400" style="font-size:1rem;"> — @restaurant.Name</span>
+            }
+        </h2>
+
+        <form asp-action="SaveProfile" method="post" enctype="multipart/form-data" data-no-loading>
+            @Html.AntiForgeryToken()
+
+            <div class="row g-4">
+
+                <div class="col-lg-8">
+
+                    <div class="cart-section mb-4">
+                        <h5 class="fw-700 mb-4">Informații restaurant</h5>
+
+                        <div class="mb-3">
+                            <label class="fw-600 small mb-1 d-block">Nume restaurant *</label>
+                            <input type="text" name="Name" value="@Model.Name" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="fw-600 small mb-1 d-block">Descriere</label>
+                            <textarea name="Description" rows="3" class="form-control"
+                                      style="resize:vertical; border-radius:10px;">@Model.Description</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="fw-600 small mb-1 d-block">Categorii *</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var cat in categories)
+                                {
+                                    var catEmoji = cat switch {
+                                        "Pizza" => "🍕", "Sushi" => "🍣", "Salate" => "🥗", "Românesc" => "🇷🇴",
+                                        "Fast Food" => "🌯", "Asian" => "🍜", "Mexican" => "🌮", "Cafenea" => "☕",
+                                        "Grill" => "🥩", "Vegan" => "🌱", "Indian" => "🍛", "Seafood" => "🐟", _ => ""
+                                    };
+                                    <label class="d-flex align-items-center gap-1 border rounded-pill px-3 py-1"
+                                           style="cursor:pointer;font-size:.87rem;user-select:none;">
+                                        <input type="checkbox" name="SelectedCategories" value="@cat"
+                                               class="form-check-input me-1 profile-cat-cb"
+                                               @(Model.SelectedCategories.Contains(cat) ? "checked" : "") />
+                                        @catEmoji @cat
+                                    </label>
+                                }
+                            </div>
+                            <div id="profCatMsg" class="text-danger small mt-1" style="display:none;">Selectează cel puțin o categorie.</div>
+                        </div>
+                    </div>
+
+                    <div class="cart-section mb-4">
+                        <h5 class="fw-700 mb-4">Setări livrare</h5>
+                        <div class="row g-3">
+                            <div class="col-4">
+                                <label class="fw-600 small mb-1 d-block">Taxă livrare (RON)</label>
+                                <input type="number" name="DeliveryFee" value="@Model.DeliveryFee.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                       class="form-control" min="0" step="0.5" />
+                            </div>
+                            <div class="col-4">
+                                <label class="fw-600 small mb-1 d-block">Min. comandă (RON)</label>
+                                <input type="number" name="MinOrderAmount" value="@Model.MinOrderAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                       class="form-control" min="0" step="1" />
+                            </div>
+                            <div class="col-4">
+                                <label class="fw-600 small mb-1 d-block">Timp livrare (min)</label>
+                                <input type="number" name="EstimatedDeliveryTime" value="@Model.EstimatedDeliveryTime"
+                                       class="form-control" min="5" max="180" step="5" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cart-section">
+                        <h5 class="fw-700 mb-4">Program de funcționare</h5>
+                        @for (int i = 0; i < Model.OpeningHours.Count; i++)
+                        {
+                            var h = Model.OpeningHours[i];
+                            <input type="hidden" name="OpeningHours[@i].Day" value="@h.Day" />
+                            <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+                                <span class="fw-500" style="min-width:90px;">@DayLabel(h.Day)</span>
+                                <div class="form-check mb-0">
+                                    <input type="hidden" name="OpeningHours[@i].IsClosed" value="false" />
+                                    <input class="form-check-input day-closed-cb"
+                                           type="checkbox" name="OpeningHours[@i].IsClosed" value="true"
+                                           id="closed-@i" @(h.IsClosed ? "checked" : "")
+                                           onchange="toggleDay(this)" />
+                                    <label class="form-check-label small" for="closed-@i">Închis</label>
+                                </div>
+                                <div class="d-flex align-items-center gap-2" id="times-@i"
+                                     style="@(h.IsClosed ? "opacity:.35;pointer-events:none;" : "")">
+                                    <input type="time" name="OpeningHours[@i].Open" value="@h.Open"
+                                           class="form-control form-control-sm" style="width:110px;" />
+                                    <span class="text-muted">—</span>
+                                    <input type="time" name="OpeningHours[@i].Close" value="@h.Close"
+                                           class="form-control form-control-sm" style="width:110px;" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                </div>
+
+                <div class="col-lg-4">
+
+                    <div class="cart-section mb-4">
+                        <h5 class="fw-700 mb-3">Logo restaurant</h5>
+                        @if (!string.IsNullOrEmpty(restaurant?.Logo))
+                        {
+                            <img src="@restaurant.Logo" alt="logo"
+                                 style="width:80px;height:80px;border-radius:12px;object-fit:cover;margin-bottom:.75rem;display:block;" />
+                        }
+                        else
+                        {
+                            <div style="width:80px;height:80px;border-radius:12px;background:var(--gray-100);
+                                        display:flex;align-items:center;justify-content:center;
+                                        font-size:2rem;margin-bottom:.75rem;">🍽️</div>
+                        }
+                        <input type="file" name="Logo" class="form-control form-control-sm"
+                               accept=".jpg,.jpeg,.png,.webp" />
+                        <div class="text-muted small mt-1">JPG, PNG sau WebP, max 5MB</div>
+                    </div>
+
+                    <div class="cart-section mb-4">
+                        <h5 class="fw-700 mb-3">Imagine copertă</h5>
+                        @if (!string.IsNullOrEmpty(restaurant?.CoverImage))
+                        {
+                            <img src="@restaurant.CoverImage" alt="cover"
+                                 style="width:100%;height:80px;border-radius:10px;object-fit:cover;margin-bottom:.75rem;display:block;" />
+                        }
+                        <input type="file" name="CoverImage" class="form-control form-control-sm"
+                               accept=".jpg,.jpeg,.png,.webp" />
+                        <div class="text-muted small mt-1">Recomandat: 1200×400 px</div>
+                    </div>
+
+                    <div class="cart-section mb-4">
+                        <h5 class="fw-700 mb-3">Contact</h5>
+                        <label class="fw-600 small mb-1 d-block">Telefon</label>
+                        <input type="tel" name="Phone" value="@Model.Phone" class="form-control"
+                               placeholder="07xx xxx xxx" />
+                    </div>
+
+                    <button type="submit" class="btn btn-orange fw-600 w-100 px-4">
+                        Salvează modificările
+                    </button>
+
+                </div>
+            </div>
+        </form>
+
+        <div class="mt-5 pt-4" style="border:1.5px solid #dc2626;border-radius:14px;padding:1.5rem 2rem;">
+            <h6 class="fw-700 mb-3" style="color:#dc2626;">Cont</h6>
+            <form asp-controller="Account" asp-action="Logout" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-danger fw-600 px-5" data-no-loading>
+                    Deconectare
+                </button>
+            </form>
+        </div>
+
+    </div>
+</section>
+
+@section Scripts {
+<script>
+function toggleDay(cb) {
+    const idx = cb.id.replace('closed-', '');
+    const wrap = document.getElementById('times-' + idx);
+    if (wrap) {
+        wrap.style.opacity = cb.checked ? '.35' : '';
+        wrap.style.pointerEvents = cb.checked ? 'none' : '';
+    }
+}
+
+document.querySelector('form').addEventListener('submit', function (e) {
+    const checked = document.querySelectorAll('input[name="SelectedCategories"]:checked');
+    const msg = document.getElementById('profCatMsg');
+    if (checked.length === 0) { e.preventDefault(); msg.style.display = ''; }
+    else { msg.style.display = 'none'; }
+});
+document.querySelectorAll('.profile-cat-cb').forEach(cb => {
+    cb.addEventListener('change', () => {
+        const checked = document.querySelectorAll('input[name="SelectedCategories"]:checked');
+        document.getElementById('profCatMsg').style.display = checked.length === 0 ? '' : 'none';
+    });
+});
+</script>
+}

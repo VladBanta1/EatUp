@@ -1,0 +1,484 @@
+@inject EatUp.Data.ApplicationDbContext _db
+@{
+    var role = User.FindFirst("Role")?.Value;
+    int unreadMessages = role == "Admin" ? _db.ContactMessages.Count(m => !m.IsRead) : 0;
+    var userName = User.Identity?.Name ?? "";
+    var avatar = User.FindFirst("Avatar")?.Value;
+    var cartCount = Context.Session.GetInt32("CartCount") ?? 0;
+    var initials = userName.Length > 0 ? userName[0].ToString().ToUpper() : "U";
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var currentAction     = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+    bool IsActive(string ctrl, string? action = null) =>
+        string.Equals(currentController, ctrl, StringComparison.OrdinalIgnoreCase) &&
+        (action == null || string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase));
+    int restaurantId = 0;
+    if (role == "Restaurant")
+    {
+        if (int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out int _ruid))
+            restaurantId = _db.Restaurants.Where(r => r.UserId == _ruid).Select(r => r.Id).FirstOrDefault();
+    }
+}
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - EatUp</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/eatup.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+    @if (role == "Restaurant" && restaurantId > 0)
+    {
+        <style>
+            @@keyframes eatupSlideIn {
+                from { transform: translateY(28px) scale(.96); opacity: 0; }
+                to   { transform: translateY(0)    scale(1);   opacity: 1; }
+            }
+            #orderNotifPopup { animation: eatupSlideIn .35s cubic-bezier(.22,1,.36,1) both; }
+        </style>
+    }
+    <meta name="request-verification-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
+</head>
+<body>
+
+<nav class="navbar navbar-eatup navbar-expand-lg">
+    <div class="container">
+        <a class="navbar-brand" asp-controller="Home" asp-action="Index">EatUp</a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navMain" aria-controls="navMain"
+                aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navMain">
+
+            @if (User.Identity?.IsAuthenticated == true && role == "Customer")
+            {
+                <form class="d-flex mx-auto my-2 my-lg-0" style="max-width:380px; width:100%;"
+                      asp-controller="Home" asp-action="Index" method="get">
+                    <div class="input-group">
+                        <input class="form-control" type="search" name="q"
+                               placeholder="Caută restaurant sau fel de mâncare..."
+                               value="@Context.Request.Query["q"]" />
+                        <button class="btn btn-orange px-3" type="submit">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            }
+
+            <ul class="navbar-nav me-auto ms-3">
+                @if (!User.Identity?.IsAuthenticated == true || role == "Customer")
+                {
+                }
+                else if (role == "Restaurant")
+                {
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("Restaurant","Stats") || IsActive("Restaurant","Dashboard") ? "active" : "")"
+                           asp-controller="Restaurant" asp-action="Stats">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("Restaurant","Orders") ? "active" : "")"
+                           asp-controller="Restaurant" asp-action="Orders">Comenzi</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("Restaurant","Menu") ? "active" : "")"
+                           asp-controller="Restaurant" asp-action="Menu">Meniu</a>
+                    </li>
+                }
+                else if (role == "Admin")
+                {
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("Admin","Index") ? "active" : "")"
+                           asp-controller="Admin" asp-action="Index">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("Admin","Restaurants") ? "active" : "")"
+                           asp-controller="Admin" asp-action="Restaurants">Restaurante</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("Admin","Users") ? "active" : "")"
+                           asp-controller="Admin" asp-action="Users">Utilizatori</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("Admin","Orders") ? "active" : "")"
+                           asp-controller="Admin" asp-action="Orders">Comenzi</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("Admin","PromoCodes") ? "active" : "")"
+                           asp-controller="Admin" asp-action="PromoCodes">Coduri Promo</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("Admin","ChangeRequests") ? "active" : "")"
+                           asp-controller="Admin" asp-action="ChangeRequests">Cereri meniu</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("Admin","Messages") ? "active" : "") position-relative"
+                           asp-controller="Admin" asp-action="Messages">
+                            Mesaje
+                            @if (unreadMessages > 0)
+                            {
+                                <span class="badge bg-danger ms-1" style="font-size:.65rem;vertical-align:middle;">@unreadMessages</span>
+                            }
+                        </a>
+                    </li>
+                }
+            </ul>
+
+            <ul class="navbar-nav ms-auto align-items-center gap-1">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    @if (role == "Customer")
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(IsActive("Home") ? "active" : "")"
+                               asp-controller="Home" asp-action="Index">Acasă</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(IsActive("Orders") ? "active" : "")"
+                               asp-controller="Orders" asp-action="Index">Comenzile mele</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(IsActive("Favorites") ? "active" : "")"
+                               asp-controller="Favorites" asp-action="Index">Favorite</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link cart-badge" asp-controller="Cart" asp-action="Index">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5M3.102 4l1.313 7h8.17l1.313-7zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2m7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
+                                </svg>
+                                @if (cartCount > 0)
+                                {
+                                    <span class="badge">@cartCount</span>
+                                }
+                            </a>
+                        </li>
+                    }
+
+                    @if (role == "Customer")
+                    {
+                        <li class="nav-item ms-2">
+                            <a class="nav-link d-flex align-items-center gap-2 py-1"
+                               asp-controller="Profile" asp-action="Index">
+                                @if (!string.IsNullOrEmpty(avatar))
+                                {
+                                    <img src="@avatar" alt="avatar" class="avatar-sm" />
+                                }
+                                else
+                                {
+                                    <span class="avatar-placeholder">@initials</span>
+                                }
+                                <span class="d-none d-lg-inline" style="font-size:0.85rem; font-weight:500; color:rgba(255,255,255,0.9)">
+                                    @userName.Split(' ')[0]
+                                </span>
+                            </a>
+                        </li>
+                    }
+                    else if (role == "Restaurant")
+                    {
+                        <li class="nav-item ms-2">
+                            <a class="nav-link d-flex align-items-center gap-2 py-1"
+                               asp-controller="Restaurant" asp-action="Profile">
+                                @if (!string.IsNullOrEmpty(avatar))
+                                {
+                                    <img src="@avatar" alt="avatar" class="avatar-sm" />
+                                }
+                                else
+                                {
+                                    <span class="avatar-placeholder">@initials</span>
+                                }
+                                <span class="d-none d-lg-inline" style="font-size:0.85rem; font-weight:500; color:rgba(255,255,255,0.9); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                                    @userName
+                                </span>
+                            </a>
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="nav-item dropdown ms-2">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-2 py-1"
+                               href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                @if (!string.IsNullOrEmpty(avatar))
+                                {
+                                    <img src="@avatar" alt="avatar" class="avatar-sm" />
+                                }
+                                else
+                                {
+                                    <span class="avatar-placeholder">@initials</span>
+                                }
+                                <span class="d-none d-lg-inline" style="font-size:0.85rem; font-weight:500; color:rgba(255,255,255,0.9)">
+                                    @userName
+                                </span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius:12px; min-width:200px;">
+                                <li class="px-3 py-2">
+                                    <div style="font-weight:600; font-size:0.9rem;">@userName</div>
+                                    <div style="font-size:0.75rem; color:var(--gray-600);">@role</div>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <form asp-controller="Account" asp-action="Logout" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="dropdown-item text-danger fw-500">
+                                            Deconectare
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
+                    }
+                }
+                else
+                {
+                    <li class="nav-item">
+                        <a class="nav-link" asp-controller="Account" asp-action="Login">Autentificare</a>
+                    </li>
+                    <li class="nav-item ms-1">
+                        <a class="btn btn-orange btn-sm px-3" asp-controller="Account" asp-action="Register">
+                            Înregistrare
+                        </a>
+                    </li>
+                }
+            </ul>
+
+        </div>
+    </div>
+</nav>
+
+<main>
+    @RenderBody()
+</main>
+
+<footer class="footer-eatup">
+    <div class="container">
+        <div class="row g-5 pb-2">
+
+            <div class="col-lg-4 col-md-12">
+                <div class="fw-800 text-orange mb-2" style="font-size:1.6rem; letter-spacing:-0.5px;">EatUp</div>
+                <p class="footer-tagline mb-3">Mâncare livrată rapid, oriunde în România</p>
+                <p class="footer-desc mb-4">EatUp este platforma care conectează clienții cu cele mai bune restaurante locale. Comandă simplu, plătești ușor, primești rapid.</p>
+                <div class="d-flex gap-2">
+                    <a href="#" class="footer-social" aria-label="Facebook">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951"/>
+                        </svg>
+                    </a>
+                    <a href="#" class="footer-social" aria-label="Instagram">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.9 3.9 0 0 0-1.417.923A3.9 3.9 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.9 3.9 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.9 3.9 0 0 0-.923-1.417A3.9 3.9 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0zm.003 1.44c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599s.453.546.598.92c.11.281.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.5 2.5 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.11-.704.24-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.5 2.5 0 0 1-.92-.598 2.5 2.5 0 0 1-.6-.92c-.109-.281-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.233s.008-2.388.046-3.231c.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92s.546-.453.92-.598c.282-.11.705-.24 1.485-.276.843-.038 1.096-.046 3.232-.046z"/>
+                            <path d="M8 3.892a4.108 4.108 0 1 0 0 8.216 4.108 4.108 0 0 0 0-8.216zm0 6.775a2.667 2.667 0 1 1 0-5.334 2.667 2.667 0 0 1 0 5.334zm5.23-6.937a.96.96 0 1 1-1.92 0 .96.96 0 0 1 1.92 0"/>
+                        </svg>
+                    </a>
+                    <a href="#" class="footer-social" aria-label="TikTok">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M9 0h1.98c.144.715.54 1.617 1.235 2.512C12.895 3.389 13.797 4 15 4v2c-1.753 0-3.07-.814-4-1.829V11a5 5 0 1 1-5-5v2a3 3 0 1 0 3 3z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-6">
+                <h6 class="footer-col-heading">Despre EatUp</h6>
+                <ul class="footer-links">
+                    <li><a href="/about">Despre noi</a></li>
+                    <li><a href="/how-it-works">Cum funcționează</a></li>
+                    <li><a href="/partner-restaurants">Restaurante partenere</a></li>
+                    <li><a href="/become-partner">Devino partener</a></li>
+                </ul>
+            </div>
+
+            <div class="col-lg-4 col-6">
+                <h6 class="footer-col-heading">Ajutor</h6>
+                <ul class="footer-links">
+                    <li><a href="/faq">Întrebări frecvente</a></li>
+                    <li><a href="/contact">Contact</a></li>
+                    <li><a href="/terms">Termeni și condiții</a></li>
+                    <li><a href="/privacy">Politica de confidențialitate</a></li>
+                </ul>
+            </div>
+
+        </div>
+
+        <div class="footer-bottom">
+            <span>&copy; 2026 EatUp SRL. Toate drepturile rezervate.</span>
+            <span>Făcut cu ❤️ în România</span>
+        </div>
+    </div>
+</footer>
+
+<div class="toast-container" id="toastContainer"></div>
+
+@if (role == "Restaurant" && restaurantId > 0)
+{
+    <div id="orderNotifPopup" style="display:none;position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;max-width:370px;min-width:280px;background:#0f172a;border-radius:16px;border-left:4px solid #f97316;color:#fff;padding:1.25rem 1.5rem;box-shadow:0 10px 36px rgba(0,0,0,.5);">
+        <div style="font-size:.7rem;letter-spacing:.1em;font-weight:800;color:#f97316;margin-bottom:.4rem;text-transform:uppercase;">🛎️ Comandă nouă</div>
+        <div id="orderNotifMsg" style="font-weight:700;font-size:.95rem;line-height:1.4;margin-bottom:.2rem;"></div>
+        <div id="orderNotifItems" style="font-size:.8rem;color:rgba(255,255,255,.6);margin-bottom:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <div style="display:flex;gap:.5rem;">
+            <a href="/restaurant/orders" onclick="dismissOrderNotif()" style="display:inline-flex;align-items:center;background:#f97316;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:.82rem;padding:.35rem 1rem;text-decoration:none;flex-shrink:0;">
+                🧾 Vezi comenzile
+            </a>
+            <button onclick="dismissOrderNotif()" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.18);border-radius:8px;font-weight:600;font-size:.82rem;padding:.35rem .85rem;cursor:pointer;flex-shrink:0;">
+                Închide
+            </button>
+        </div>
+    </div>
+}
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+<script>
+    function showToast(message, type = 'success') {
+        const bg = type === 'success' ? '#0f172a' : (type === 'error' ? '#dc2626' : '#f97316');
+        const id = 'toast-' + Date.now();
+        const html = `<div id="${id}" class="toast align-items-center text-white border-0 show mb-2"
+                           style="background:${bg};border-radius:12px;min-width:260px;" role="alert">
+            <div class="d-flex">
+                <div class="toast-body fw-500">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                        data-bs-dismiss="toast"></button>
+            </div>
+        </div>`;
+        document.getElementById('toastContainer').insertAdjacentHTML('beforeend', html);
+        setTimeout(() => { const el = document.getElementById(id); if (el) el.remove(); }, 4000);
+    }
+    @if (TempData["Success"] != null) { <text>showToast('@Html.Raw(TempData["Success"])');</text> }
+    @if (TempData["Error"] != null) { <text>showToast('@Html.Raw(TempData["Error"])', 'error');</text> }
+
+        // sessionStorage bridges toast messages across client-side redirects (e.g. after order placement)
+    const _pendingToast = sessionStorage.getItem('eatup_toast');
+    if (_pendingToast) {
+        try {
+            const t = JSON.parse(_pendingToast);
+            sessionStorage.removeItem('eatup_toast');
+            setTimeout(() => showToast(t.msg, t.type || 'success'), 300);
+        } catch(e) { sessionStorage.removeItem('eatup_toast'); }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            if (form.dataset.noLoading !== undefined) return;
+            const btn = form.querySelector('button[type=submit]:not([data-no-loading])');
+            if (!btn) return;
+            const origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" style="width:.9em;height:.9em;border-width:2px;vertical-align:middle;"></span>' + btn.textContent.trim();
+            window.addEventListener('pageshow', function () { btn.disabled = false; btn.innerHTML = origHtml; }, { once: true });
+        });
+    });
+</script>
+@if (role == "Restaurant" && restaurantId > 0)
+{
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+    <script>
+    (function () {
+        const RESTAURANT_ID = @restaurantId;
+
+        let audioCtx = null;
+        let chimeTimer = null;
+
+        function getCtx() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            return audioCtx;
+        }
+
+        function playChime() {
+            try {
+                const ctx = getCtx();
+                if (ctx.state === 'suspended') ctx.resume();
+                [523, 659, 784, 1047].forEach((freq, i) => {       // C5-E5-G5-C6 arpeggio
+                    const osc = ctx.createOscillator(), gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'sine'; osc.frequency.value = freq;
+                    const t = ctx.currentTime + i * 0.13;
+                    gain.gain.setValueAtTime(0, t);
+                    gain.gain.linearRampToValueAtTime(0.22, t + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+                    osc.start(t); osc.stop(t + 0.5);
+                });
+            } catch (e) {}
+        }
+
+        function startChime() {
+            if (chimeTimer) return;
+            playChime();
+            chimeTimer = setInterval(playChime, 8000);
+        }
+
+        function stopChime() {
+            if (chimeTimer) { clearInterval(chimeTimer); chimeTimer = null; }
+        }
+
+        // audio context must resume after a user gesture due to browser autoplay policy
+        document.addEventListener('click', function () {
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        }, { once: true });
+
+        window.dismissOrderNotif = function () {
+            stopChime();
+            const el = document.getElementById('orderNotifPopup');
+            if (el) el.style.display = 'none';
+        };
+
+        function showNotif(order) {
+            const el = document.getElementById('orderNotifPopup');
+            if (!el) return;
+            document.getElementById('orderNotifMsg').textContent =
+                `#${order.restaurantOrderNumber} · ${order.total} RON · ${order.customerName}`;
+            document.getElementById('orderNotifItems').textContent =
+                (order.items || []).slice(0, 3).map(i => `${i.name} ×${i.qty}`).join(' · ');
+            el.style.animation = 'none';
+            el.offsetHeight;
+            el.style.animation = '';
+            el.style.display = 'block';
+            startChime();
+        }
+
+        const conn = new signalR.HubConnectionBuilder()
+            .withUrl('/hubs/orders')
+            .withAutomaticReconnect()
+            .build();
+
+        window.eatupOrderHub = conn;
+
+        conn.onreconnecting(() =>
+            document.dispatchEvent(new CustomEvent('eatup:reconnecting')));
+        conn.onreconnected(() => {
+            conn.invoke('JoinRestaurantGroup', RESTAURANT_ID).catch(() => {});
+            document.dispatchEvent(new CustomEvent('eatup:reconnected'));
+        });
+        conn.onclose(() =>
+            document.dispatchEvent(new CustomEvent('eatup:disconnected')));
+
+        conn.on('order_incoming', function (order) {
+            document.dispatchEvent(new CustomEvent('eatup:order_incoming', { detail: order }));
+            showNotif(order);
+        });
+
+        conn.on('order_cancelled', function(orderId, restaurantOrderNumber) {
+            playChime();
+            showToast(`❌ Comanda #${restaurantOrderNumber} a fost anulată de client.`, 'error');
+        });
+
+        window.eatupHubPromise = conn.start()
+            .then(() => {
+                conn.invoke('JoinRestaurantGroup', RESTAURANT_ID).catch(() => {});
+                document.dispatchEvent(new CustomEvent('eatup:connected'));
+            })
+            .catch(e => {
+                document.dispatchEvent(new CustomEvent('eatup:disconnected'));
+                console.error('SignalR connection error:', e);
+            });
+    })();
+    </script>
+}
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

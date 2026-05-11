@@ -1,0 +1,42 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Eroare server";
+}
+
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-10 col-md-7 col-lg-5 text-center">
+
+                <div style="font-size:6rem; line-height:1; margin-bottom:1.5rem; filter:drop-shadow(0 4px 16px rgba(249,115,22,.25));">
+                    💥
+                </div>
+
+                <div style="font-size:5rem; font-weight:800; color:var(--orange); line-height:1; margin-bottom:.5rem; letter-spacing:-2px;">
+                    500
+                </div>
+
+                <h1 style="font-size:1.6rem; font-weight:800; color:var(--navy); margin-bottom:.75rem;">
+                    Ceva nu a mers bine
+                </h1>
+
+                <p class="text-muted mb-4" style="font-size:.95rem; line-height:1.7;">
+                    A apărut o eroare neașteptată.<br>Echipa noastră a fost notificată.
+                </p>
+
+                @if (Model.ShowRequestId)
+                {
+                    <p class="text-muted mb-4" style="font-size:.78rem;">
+                        ID eroare: <code style="background:#f1f5f9; padding:.15rem .4rem; border-radius:4px;">@Model.RequestId</code>
+                    </p>
+                }
+
+                <div class="d-flex gap-3 justify-content-center flex-wrap">
+                    <a href="/" class="btn btn-orange px-5 fw-600" style="border-radius:12px;">Înapoi acasă</a>
+                    <a href="javascript:location.reload()" class="btn btn-outline-orange px-4 fw-600" style="border-radius:12px;">Încearcă din nou</a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>

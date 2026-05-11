@@ -1,0 +1,271 @@
+@model RegisterRestaurantViewModel
+@{ ViewData["Title"] = "Înregistrare Restaurant"; }
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+}
+
+<div class="container py-5" style="max-width:780px;">
+    <div class="text-center mb-4">
+        <div style="font-size:2rem; font-weight:800; color:var(--orange);">EatUp</div>
+        <h2 class="fw-700 mt-1" style="font-size:1.5rem;">Înregistrează-ți restaurantul</h2>
+        <p class="text-muted" style="font-size:.9rem;">Completează formularul și îl vom aproba cât mai curând.</p>
+    </div>
+
+    <form asp-action="RegisterRestaurant" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+
+        <div class="card-eatup p-4 mb-4">
+            <div class="section-title">Contul managerului</div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="OwnerName" class="form-label">Nume complet</label>
+                    <input asp-for="OwnerName" class="form-control" placeholder="Ion Popescu" />
+                    <span asp-validation-for="OwnerName" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Phone" class="form-label">Telefon</label>
+                    <input asp-for="Phone" class="form-control" placeholder="07xx xxx xxx" />
+                    <span asp-validation-for="Phone" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Email" class="form-label">Email</label>
+                    <input asp-for="Email" class="form-control" placeholder="restaurant@email.com" />
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Password" class="form-label">Parolă</label>
+                    <input asp-for="Password" class="form-control" placeholder="Min. 6 caractere" />
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="ConfirmPassword" class="form-label">Confirmă parola</label>
+                    <input asp-for="ConfirmPassword" class="form-control" placeholder="Repetă parola" />
+                    <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-eatup p-4 mb-4">
+            <div class="section-title">Detalii restaurant</div>
+            <div class="row g-3">
+                <div class="col-md-7">
+                    <label asp-for="RestaurantName" class="form-label">Numele restaurantului</label>
+                    <input asp-for="RestaurantName" class="form-control" placeholder="Pizza Napoli" />
+                    <span asp-validation-for="RestaurantName" class="text-danger small"></span>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-600">Categorii *</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var c in new[] { "Pizza","Sushi","Salate","Românesc","Fast Food","Asian","Mexican","Cafenea","Grill","Vegan","Indian","Seafood" })
+                        {
+                            var emoji = c switch {
+                                "Pizza" => "🍕", "Sushi" => "🍣", "Salate" => "🥗", "Românesc" => "🇷🇴",
+                                "Fast Food" => "🌯", "Asian" => "🍜", "Mexican" => "🌮", "Cafenea" => "☕",
+                                "Grill" => "🥩", "Vegan" => "🌱", "Indian" => "🍛", "Seafood" => "🐟", _ => ""
+                            };
+                            <label class="d-flex align-items-center gap-1 border rounded-pill px-3 py-1 category-check-label"
+                                   style="cursor:pointer;font-size:.87rem;user-select:none;">
+                                <input type="checkbox" name="SelectedCategories" value="@c"
+                                       class="form-check-input me-1 category-checkbox"
+                                       @(Model.SelectedCategories.Contains(c) ? "checked" : "") />
+                                @emoji @c
+                            </label>
+                        }
+                    </div>
+                    <div id="catValidationMsg" class="text-danger small mt-1" style="display:none;">Selectează cel puțin o categorie.</div>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Description" class="form-label">Descriere</label>
+                    <textarea asp-for="Description" class="form-control" rows="2"
+                              placeholder="Câteva cuvinte despre restaurantul tău..."></textarea>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="DeliveryFee" class="form-label">Taxă livrare (RON)</label>
+                    <input asp-for="DeliveryFee" class="form-control" type="number" min="0" step="0.50" />
+                    <span asp-validation-for="DeliveryFee" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="MinOrderAmount" class="form-label">Comandă minimă (RON)</label>
+                    <input asp-for="MinOrderAmount" class="form-control" type="number" min="0" step="1" />
+                    <span asp-validation-for="MinOrderAmount" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="EstimatedDeliveryTime" class="form-label">Timp livrare (min)</label>
+                    <input asp-for="EstimatedDeliveryTime" class="form-control" type="number" min="5" max="180" />
+                    <span asp-validation-for="EstimatedDeliveryTime" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-eatup p-4 mb-4">
+            <div class="section-title">Locație</div>
+            <div class="mb-3">
+                <label asp-for="Address" class="form-label">Adresă (caută sau dă click pe hartă)</label>
+                <div class="input-group">
+                    <input asp-for="Address" class="form-control" id="addressInput"
+                           placeholder="Strada Victoriei 12, București" />
+                    <button type="button" class="btn btn-orange px-3" id="geocodeBtn">Caută</button>
+                </div>
+                <span asp-validation-for="Address" class="text-danger small"></span>
+            </div>
+            <div id="restaurant-map" class="mb-3"></div>
+            <div class="row g-2">
+                <div class="col-6">
+                    <label class="form-label" style="font-size:.8rem; color:var(--gray-600);">Latitudine</label>
+                    <input asp-for="Lat" id="Lat" class="form-control form-control-sm" readonly />
+                </div>
+                <div class="col-6">
+                    <label class="form-label" style="font-size:.8rem; color:var(--gray-600);">Longitudine</label>
+                    <input asp-for="Lng" id="Lng" class="form-control form-control-sm" readonly />
+                </div>
+            </div>
+            <p class="text-muted mt-2 mb-0" style="font-size:.8rem;">
+                Dă click pe hartă pentru a poziționa markerul exact la adresa ta.
+            </p>
+        </div>
+
+        <div class="card-eatup p-4 mb-4">
+            <div class="section-title">Imagini</div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Logo" class="form-label">Logo restaurant</label>
+                    <input asp-for="Logo" class="form-control" type="file" accept="image/*" />
+                    <div class="text-muted small mt-1">JPG, PNG sau WebP, max 5 MB</div>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="CoverImage" class="form-label">Imagine de copertă</label>
+                    <input asp-for="CoverImage" class="form-control" type="file" accept="image/*" />
+                    <div class="text-muted small mt-1">Recomandăm 1200×400px</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-eatup p-4 mb-4">
+            <div class="section-title">Program de funcționare</div>
+            <table class="table hours-table mb-0">
+                <thead>
+                    <tr>
+                        <th style="font-weight:600; font-size:.85rem;">Zi</th>
+                        <th style="font-weight:600; font-size:.85rem;">Închis</th>
+                        <th style="font-weight:600; font-size:.85rem;">Deschidere</th>
+                        <th style="font-weight:600; font-size:.85rem;">Închidere</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < Model.OpeningHours.Count; i++)
+                    {
+                        var day = Model.OpeningHours[i];
+                        var dayNames = new Dictionary<string,string> {
+                            {"Monday","Luni"}, {"Tuesday","Marți"}, {"Wednesday","Miercuri"},
+                            {"Thursday","Joi"}, {"Friday","Vineri"}, {"Saturday","Sâmbătă"}, {"Sunday","Duminică"}
+                        };
+                        <tr>
+                            <td style="font-weight:500; font-size:.9rem;">@(dayNames.GetValueOrDefault(day.Day, day.Day))</td>
+                            <td>
+                                <input type="hidden" name="OpeningHours[@i].Day" value="@day.Day" />
+                                <input type="checkbox" name="OpeningHours[@i].IsClosed"
+                                       @(day.IsClosed ? "checked" : "")
+                                       class="form-check-input closed-check"
+                                       data-row="@i" value="true" />
+                            </td>
+                            <td>
+                                <input type="time" name="OpeningHours[@i].Open"
+                                       value="@day.Open"
+                                       class="form-control form-control-sm time-input-@i"
+                                       @(day.IsClosed ? "disabled" : "") />
+                            </td>
+                            <td>
+                                <input type="time" name="OpeningHours[@i].Close"
+                                       value="@day.Close"
+                                       class="form-control form-control-sm time-input-@i"
+                                       @(day.IsClosed ? "disabled" : "") />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex gap-3">
+            <button type="submit" class="btn btn-orange px-5 py-2 fw-600">
+                Trimite aplicația
+            </button>
+            <a asp-action="Login" class="btn btn-outline-secondary px-4 py-2">Anulează</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const initLat = parseFloat(document.getElementById('Lat').value) || 45.9;
+        const initLng = parseFloat(document.getElementById('Lng').value) || 24.9;
+
+        const map = L.map('restaurant-map').setView([initLat, initLng], initLat === 45.9 ? 7 : 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        let marker = L.marker([initLat, initLng]).addTo(map);
+
+        function placeMarker(lat, lng) {
+            marker.setLatLng([lat, lng]);
+            map.setView([lat, lng], 15);
+            document.getElementById('Lat').value = lat.toFixed(6);
+            document.getElementById('Lng').value = lng.toFixed(6);
+        }
+
+        map.on('click', function (e) {
+            placeMarker(e.latlng.lat, e.latlng.lng);
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}&accept-language=ro`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.display_name) {
+                        document.getElementById('addressInput').value = data.display_name;
+                    }
+                }).catch(() => {});
+        });
+
+        document.getElementById('geocodeBtn').addEventListener('click', function () {
+            const q = document.getElementById('addressInput').value.trim();
+            if (!q) return;
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&accept-language=ro`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        placeMarker(parseFloat(data[0].lat), parseFloat(data[0].lon));
+                    } else {
+                        alert('Adresa nu a putut fi găsită. Încearcă să dai click pe hartă.');
+                    }
+                }).catch(() => {});
+        });
+
+        document.querySelectorAll('.closed-check').forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                const row = this.dataset.row;
+                document.querySelectorAll('.time-input-' + row).forEach(function (inp) {
+                    inp.disabled = checkbox.checked;
+                });
+            });
+        });
+
+        document.querySelector('form').addEventListener('submit', function (e) {
+            const checked = document.querySelectorAll('input[name="SelectedCategories"]:checked');
+            const msg = document.getElementById('catValidationMsg');
+            if (checked.length === 0) {
+                e.preventDefault();
+                msg.style.display = '';
+            } else {
+                msg.style.display = 'none';
+            }
+        });
+        document.querySelectorAll('.category-checkbox').forEach(cb => {
+            cb.addEventListener('change', () => {
+                const checked = document.querySelectorAll('input[name="SelectedCategories"]:checked');
+                document.getElementById('catValidationMsg').style.display = checked.length === 0 ? '' : 'none';
+            });
+        });
+    </script>
+}

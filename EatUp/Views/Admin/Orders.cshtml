@@ -1,0 +1,171 @@
+@using EatUp.Models
+@{
+    ViewData["Title"] = "Comenzi platformă";
+    var orders = (List<Order>)ViewBag.Orders;
+    var restaurants = (List<Restaurant>)ViewBag.Restaurants;
+    string? statusFilter = ViewBag.Status;
+    int? restFilter = ViewBag.RestaurantId;
+    string? dateFrom = ViewBag.DateFrom;
+    string? dateTo = ViewBag.DateTo;
+}
+
+@functions {
+    static string StatusLabel(OrderStatus s) => s switch {
+        OrderStatus.Pending        => "În așteptare",
+        OrderStatus.Accepted       => "Acceptată",
+        OrderStatus.Preparing      => "Se prepară",
+        OrderStatus.ReadyForPickup => "Gata de ridicare",
+        OrderStatus.OutForDelivery => "În drum spre tine",
+        OrderStatus.Delivered      => "Livrată",
+        OrderStatus.Rejected       => "Respinsă",
+        OrderStatus.Cancelled      => "Anulată",
+        _ => s.ToString()
+    };
+    static string StatusClass(OrderStatus s) => s switch {
+        OrderStatus.Pending        => "status-pending",
+        OrderStatus.Accepted       => "status-accepted",
+        OrderStatus.Preparing      => "status-preparing",
+        OrderStatus.ReadyForPickup => "status-ready",
+        OrderStatus.OutForDelivery => "status-delivery",
+        OrderStatus.Delivered      => "status-delivered",
+        OrderStatus.Rejected       => "status-rejected",
+        OrderStatus.Cancelled      => "status-cancelled",
+        _ => ""
+    };
+}
+
+<div class="container py-5">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h2 class="fw-700 mb-0" style="font-size:1.5rem;">Comenzi platformă</h2>
+        <span class="text-muted small">@orders.Count rezultate (max 200)</span>
+    </div>
+
+    <form asp-action="Orders" method="get" class="cart-section mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-sm-3">
+                <label class="fw-600 small mb-1 d-block">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">Toate statusurile</option>
+                    @foreach (var s in Enum.GetValues<OrderStatus>())
+                    {
+                        if (statusFilter == s.ToString())
+                        {
+                            <option value="@s" selected="selected">@StatusLabel(s)</option>
+                        }
+                        else
+                        {
+                            <option value="@s">@StatusLabel(s)</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-sm-3">
+                <label class="fw-600 small mb-1 d-block">Restaurant</label>
+                <select name="restaurantId" class="form-select form-select-sm">
+                    <option value="">Toate restaurantele</option>
+                    @foreach (var r in restaurants)
+                    {
+                        if (restFilter == r.Id)
+                        {
+                            <option value="@r.Id" selected="selected">@r.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@r.Id">@r.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-sm-2">
+                <label class="fw-600 small mb-1 d-block">De la</label>
+                <input type="date" name="dateFrom" value="@dateFrom" class="form-control form-control-sm" />
+            </div>
+            <div class="col-sm-2">
+                <label class="fw-600 small mb-1 d-block">Până la</label>
+                <input type="date" name="dateTo" value="@dateTo" class="form-control form-control-sm" />
+            </div>
+            <div class="col-sm-2 d-flex gap-2">
+                <button type="submit" class="btn btn-orange btn-sm w-100">Filtrează</button>
+                <a asp-action="Orders" class="btn btn-light btn-sm">×</a>
+            </div>
+        </div>
+    </form>
+
+    <div class="cart-section">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:.88rem;">
+                <thead style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
+                    <tr>
+                        <th class="fw-600 py-3">#</th>
+                        <th class="fw-600 py-3">Client</th>
+                        <th class="fw-600 py-3">Restaurant</th>
+                        <th class="fw-600 py-3">Data</th>
+                        <th class="fw-600 py-3">Plată</th>
+                        <th class="fw-600 py-3">Status</th>
+                        <th class="fw-600 py-3 text-end">Total</th>
+                        <th class="fw-600 py-3"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var o in orders)
+                    {
+                        <tr style="cursor:pointer;" onclick="loadOrderDetail(@o.Id)">
+                            <td class="text-muted fw-500">#@o.Id</td>
+                            <td class="fw-500">@o.Customer.Name</td>
+                            <td>@o.Restaurant.Name</td>
+                            <td class="text-muted">@o.CreatedAt.ToLocalTime().ToString("dd MMM · HH:mm")</td>
+                            <td>
+                                @(o.PaymentMethod == PaymentMethod.Card ? "💳 Card" : "💵 Cash")
+                            </td>
+                            <td>
+                                <span class="order-status-pill @StatusClass(o.Status)">@StatusLabel(o.Status)</span>
+                            </td>
+                            <td class="text-end fw-700 text-orange">@o.Total.ToString("0.00") RON</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-orange py-0 px-2"
+                                        onclick="event.stopPropagation(); loadOrderDetail(@o.Id)">
+                                    Detalii
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (!orders.Any())
+        {
+            <div class="text-center py-4 text-muted">Nicio comandă găsită.</div>
+        }
+    </div>
+</div>
+
+<div class="modal fade" id="orderDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius:16px; border:none;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-700" id="orderDetailTitle">Detalii comandă</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="orderDetailBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-orange" role="status"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const orderModal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
+
+async function loadOrderDetail(id) {
+    document.getElementById('orderDetailTitle').textContent = `Comandă #${id}`;
+    document.getElementById('orderDetailBody').innerHTML =
+        '<div class="text-center py-4"><div class="spinner-border text-orange" role="status"></div></div>';
+    orderModal.show();
+    const res = await fetch(`/Admin/OrderDetail/${id}`);
+    if (res.ok) document.getElementById('orderDetailBody').innerHTML = await res.text();
+}
+</script>
+}

@@ -1,0 +1,149 @@
+@model EatUp.Models.User
+@{ ViewData["Title"] = "Profilul meu"; }
+
+<section class="py-4 py-lg-5">
+    <div class="container" style="max-width:780px;">
+
+        <h2 class="fw-800 mb-4" style="font-size:1.5rem;">Profilul meu</h2>
+
+        <div class="row g-4">
+
+            <div class="col-lg-7">
+                <div class="cart-section">
+                    <h5 class="fw-700 mb-4">Informații cont</h5>
+                    <form asp-action="SaveProfile" method="post" enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+
+                        <div class="mb-4 text-center">
+                            @if (!string.IsNullOrEmpty(Model.Avatar))
+                            {
+                                <img src="@Model.Avatar" id="avatarPreview"
+                                     style="width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid var(--orange);" />
+                            }
+                            else
+                            {
+                                <div id="avatarPreview"
+                                     style="width:88px;height:88px;border-radius:50%;background:var(--navy);
+                                            display:inline-flex;align-items:center;justify-content:center;
+                                            font-size:2rem;color:white;font-weight:800;border:3px solid var(--orange);">
+                                    @Model.Name[0].ToString().ToUpper()
+                                </div>
+                            }
+                            <div class="mt-2">
+                                <label for="avatarInput" class="btn btn-sm btn-outline-orange" style="cursor:pointer;">
+                                    Schimbă poza
+                                </label>
+                                <input type="file" id="avatarInput" name="avatar" class="d-none"
+                                       accept=".jpg,.jpeg,.png,.webp" onchange="previewAvatar(this)" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="fw-600 small mb-1 d-block">Nume complet *</label>
+                            <input type="text" name="name" value="@Model.Name" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="fw-600 small mb-1 d-block">Email</label>
+                            <input type="email" value="@Model.Email" class="form-control" disabled />
+                            <div class="text-muted small mt-1">Email-ul nu poate fi schimbat.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="fw-600 small mb-1 d-block">Telefon</label>
+                            <input type="tel" name="phone" value="@Model.Phone" class="form-control"
+                                   placeholder="ex: 0712 345 678" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="fw-600 small mb-1 d-block">Adresă implicită</label>
+                            <input type="text" name="address" value="@Model.Address" class="form-control"
+                                   placeholder="Strada, număr, oraș…" />
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="fw-600 small mb-1 d-block">Orașul tău</label>
+                            @{
+                                var profileCity = Model.City ?? "";
+                            }
+                            <select name="city" class="form-select" style="border-radius:10px;">
+                                <option value="@string.Empty" selected="@(profileCity == "" ? "selected" : null)">— Nesetat —</option>
+                                <option value="București" selected="@(profileCity == "București" ? "selected" : null)">București</option>
+                                <option value="Craiova" selected="@(profileCity == "Craiova" ? "selected" : null)">Craiova</option>
+                            </select>
+                            <div class="text-muted small mt-1">Folosit pentru a filtra restaurantele din orașul tău.</div>
+                        </div>
+
+                        <button type="submit" class="btn btn-orange fw-600 px-5">Salvează</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="cart-section">
+                    <h5 class="fw-700 mb-4">Schimbă parola</h5>
+                    <form asp-action="ChangePassword" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label class="fw-600 small mb-1 d-block">Parola curentă *</label>
+                            <input type="password" name="currentPassword" class="form-control" required
+                                   autocomplete="current-password" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="fw-600 small mb-1 d-block">Parola nouă *</label>
+                            <input type="password" name="newPassword" class="form-control" required
+                                   minlength="6" autocomplete="new-password" />
+                            <div class="text-muted small mt-1">Minim 6 caractere.</div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="fw-600 small mb-1 d-block">Confirmă parola nouă *</label>
+                            <input type="password" name="confirmPassword" class="form-control" required
+                                   autocomplete="new-password" />
+                        </div>
+                        <button type="submit" class="btn btn-outline-orange fw-600 w-100">
+                            Schimbă parola
+                        </button>
+                    </form>
+                </div>
+
+                <div class="cart-section mt-4">
+                    <div class="text-muted small fw-600 mb-2">CONT CREAT</div>
+                    <div>@Model.CreatedAt.ToLocalTime().ToString("dd MMMM yyyy", new System.Globalization.CultureInfo("ro-RO"))</div>
+                    <div class="text-muted small mt-1">@Model.Email</div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="mt-5 pt-4" style="border:1.5px solid #dc2626;border-radius:14px;padding:1.5rem 2rem;">
+            <h6 class="fw-700 mb-3" style="color:#dc2626;">Cont</h6>
+            <form asp-controller="Account" asp-action="Logout" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-danger fw-600 px-5" data-no-loading>
+                    Deconectare
+                </button>
+            </form>
+        </div>
+
+    </div>
+</section>
+
+@section Scripts {
+<script>
+function previewAvatar(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const preview = document.getElementById('avatarPreview');
+            if (preview.tagName === 'IMG') {
+                preview.src = e.target.result;
+            } else {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.id = 'avatarPreview';
+                img.style.cssText = 'width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid var(--orange);';
+                preview.replaceWith(img);
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+}
