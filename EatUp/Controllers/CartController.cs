@@ -342,6 +342,61 @@ public class CartController : Controller
         return Json(new { orderId = order.Id });
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Recommendations(int restaurantId, string type)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        string[] targetKeywords = type == "desserts"
+            ? new[] { "desert", "deserturi", "dulciuri", "dulce", "prăjituri", "prajituri", "tort", "inghetata", "înghețată" }
+            : type == "drinks"
+            ? new[] { "băutură", "bautura", "băuturi", "bauturi", "suc", "sucuri", "cafea", "apă", "apa", "ceai", "bere", "vin", "cocktail", "limonadă", "limonada" }
+            : new[] { "garnituri", "garnitură", "garnitura", "salate", "salată", "salata", "supe", "supă", "supa" };
+
+        var allItems = await _db.MenuItems
+            .Include(mi => mi.Category)
+            .Where(mi => mi.RestaurantId == restaurantId && mi.IsApproved && mi.IsAvailable)
+            .ToListAsync();
+
+        var matchedItems = allItems
+            .Where(mi => targetKeywords.Any(k =>
+                (mi.Category?.Name ?? "").Contains(k, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        if (matchedItems.Count == 0)
+            return Json(new { items = Array.Empty<object>() });
+
+        var itemIds = matchedItems.Select(mi => mi.Id).ToList();
+        var popularityCounts = await _db.OrderItems
+            .Where(oi => itemIds.Contains(oi.MenuItemId))
+            .GroupBy(oi => oi.MenuItemId)
+            .Select(g => new { MenuItemId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.MenuItemId, x => x.Count);
+
+        var previouslyOrdered = await _db.OrderItems
+            .Where(oi => itemIds.Contains(oi.MenuItemId) &&
+                         _db.Orders.Any(o => o.Id == oi.OrderId && o.CustomerId == userId))
+            .Select(oi => oi.MenuItemId)
+            .Distinct()
+            .ToListAsync();
+
+        var sorted = matchedItems
+            .OrderByDescending(mi => previouslyOrdered.Contains(mi.Id) ? 1 : 0)
+            .ThenByDescending(mi => popularityCounts.GetValueOrDefault(mi.Id, 0))
+            .Take(4)
+            .Select(mi => new
+            {
+                id = mi.Id,
+                name = mi.Name,
+                price = mi.Price,
+                image = mi.Image,
+                wasPreviouslyOrdered = previouslyOrdered.Contains(mi.Id)
+            })
+            .ToList();
+
+        return Json(new { items = sorted });
+    }
+
     private Cart GetCart()
     {
         var json = HttpContext.Session.GetString("Cart");

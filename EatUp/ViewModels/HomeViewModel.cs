@@ -18,6 +18,7 @@ public class RestaurantCardViewModel
     public double Lng { get; set; }
     public string Address { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public decimal AvgMainPrice { get; set; }
 }
 
 public class HomeViewModel

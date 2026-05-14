@@ -12,7 +12,6 @@
     --gray-600: #475569;
 }
 
-/* ── Base ─────────────────────────────────────────── */
 * { box-sizing: border-box; }
 
 body {
@@ -28,7 +27,6 @@ main {
     flex: 1;
 }
 
-/* ── Navbar ───────────────────────────────────────── */
 .navbar-eatup {
     background-color: var(--navy);
     padding: 0.75rem 0;
@@ -68,7 +66,6 @@ main {
     filter: invert(1);
 }
 
-/* ── Cart Badge ───────────────────────────────────── */
 .cart-badge {
     position: relative;
     display: inline-flex;
@@ -91,7 +88,6 @@ main {
     line-height: 1;
 }
 
-/* ── User Avatar ──────────────────────────────────── */
 .avatar-sm {
     width: 34px;
     height: 34px;
@@ -113,7 +109,6 @@ main {
     font-weight: 700;
 }
 
-/* ── Buttons ──────────────────────────────────────── */
 .btn-orange {
     background-color: var(--orange);
     color: white;
@@ -162,7 +157,6 @@ main {
     color: white;
 }
 
-/* ── Cards ────────────────────────────────────────── */
 .card-eatup {
     border: none;
     border-radius: 14px;
@@ -176,7 +170,6 @@ main {
     box-shadow: 0 8px 28px rgba(15,23,42,0.13);
 }
 
-/* ── Forms ────────────────────────────────────────── */
 .form-control, .form-select {
     border-radius: 10px;
     border: 1.5px solid var(--gray-200);
@@ -198,7 +191,6 @@ main {
     color: var(--navy-800);
 }
 
-/* ── Auth page layout ─────────────────────────────── */
 .auth-page {
     min-height: calc(100vh - 70px);
     display: flex;
@@ -231,7 +223,6 @@ main {
     margin-bottom: 2rem;
 }
 
-/* ── Section headers ──────────────────────────────── */
 .section-title {
     font-size: 0.75rem;
     font-weight: 700;
@@ -241,7 +232,6 @@ main {
     margin-bottom: 1rem;
 }
 
-/* ── Status badges ────────────────────────────────── */
 .badge-status {
     font-size: 0.75rem;
     font-weight: 600;
@@ -249,12 +239,10 @@ main {
     border-radius: 20px;
 }
 
-/* ── Orange accent ────────────────────────────────── */
 .text-orange { color: var(--orange) !important; }
 .bg-orange { background-color: var(--orange) !important; }
 .border-orange { border-color: var(--orange) !important; }
 
-/* ── Footer ───────────────────────────────────────── */
 .footer-eatup {
     background-color: #0f172a;
     color: rgba(255,255,255,0.55);
@@ -330,7 +318,6 @@ main {
     gap: 0.5rem;
 }
 
-/* ── Static pages (about, faq, etc.) ─────────────── */
 .page-hero {
     background: linear-gradient(135deg, var(--navy) 0%, #1e3a5f 100%);
     padding: 4rem 0 3rem;
@@ -457,14 +444,12 @@ main {
     margin-bottom: 1rem;
 }
 
-/* ── Leaflet map picker ───────────────────────────── */
 #restaurant-map {
     height: 360px;
     border-radius: 12px;
     border: 1.5px solid var(--gray-200);
 }
 
-/* ── Opening hours table ──────────────────────────── */
 .hours-table td {
     vertical-align: middle;
     padding: 0.4rem 0.5rem;
@@ -474,13 +459,11 @@ main {
     width: 130px;
 }
 
-/* ── Font weight helpers (Bootstrap numeric aliases) ─ */
 .fw-500 { font-weight: 500 !important; }
 .fw-600 { font-weight: 600 !important; }
 .fw-700 { font-weight: 700 !important; }
 .fw-800 { font-weight: 800 !important; }
 
-/* ── Toast container ──────────────────────────────── */
 .toast-container {
     position: fixed;
     bottom: 1.5rem;
@@ -488,11 +471,6 @@ main {
     z-index: 1100;
 }
 
-/* ═══════════════════════════════════════════════════
-   STEP 3 — Home page & Restaurant detail
-   ═══════════════════════════════════════════════════ */
-
-/* ── Hero section ─────────────────────────────────── */
 .hero-section {
     background: linear-gradient(135deg, var(--navy) 0%, #1e3a5f 100%);
     padding: 4rem 0 3rem;
@@ -537,7 +515,6 @@ main {
     min-width: 0;
 }
 
-/* ── Category pills ───────────────────────────────── */
 .category-pills {
     display: flex;
     gap: .5rem;
@@ -569,7 +546,6 @@ main {
     border-color: var(--orange);
 }
 
-/* ── Filter chips ─────────────────────────────────── */
 .filter-chip {
     display: inline-flex;
     align-items: center;
@@ -587,7 +563,6 @@ main {
 .filter-chip:hover { border-color: var(--orange); color: var(--orange); }
 .filter-chip.active { background: var(--orange); color: white; border-color: var(--orange); }
 
-/* ── Sort tabs ────────────────────────────────────── */
 .sort-tabs {
     display: flex;
     background: var(--gray-100);
@@ -608,7 +583,6 @@ main {
 .sort-tab:hover { color: var(--navy); }
 .sort-tab.active { background: white; color: var(--navy); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
 
-/* ── Restaurant cards ─────────────────────────────── */
 .restaurant-card {
     background: white;
     border-radius: 16px;
@@ -706,7 +680,6 @@ main {
     white-space: nowrap;
 }
 
-/* ── Home map ─────────────────────────────────────── */
 #home-map {
     height: 400px;
     border-radius: 16px;
@@ -714,7 +687,6 @@ main {
     box-shadow: 0 2px 16px rgba(0,0,0,.08);
 }
 
-/* ── Restaurant Hero (detail page) ───────────────── */
 .restaurant-hero {
     position: relative;
     height: 280px;
@@ -782,7 +754,6 @@ main {
 .btn-favorite-hero:hover { background: rgba(255,255,255,.25); transform: scale(1.1); }
 .btn-favorite-hero.favorited { background: rgba(239,68,68,.3); border-color: rgba(239,68,68,.5); }
 
-/* ── Category Tabs (detail) ───────────────────────── */
 .menu-tab-link {
     display: inline-block;
     padding: .45rem 1rem;
@@ -798,7 +769,6 @@ main {
 .menu-tab-link:hover { color: var(--navy); background: var(--gray-100); }
 .menu-tab-link.active { color: var(--orange); border-color: var(--orange); background: #fff7ed; }
 
-/* ── Menu Item Cards ──────────────────────────────── */
 .menu-item-card {
     background: white;
     border-radius: 14px;
@@ -856,7 +826,6 @@ main {
     padding: 0 1rem 1rem;
 }
 
-/* ── Reviews ──────────────────────────────────────── */
 .review-summary { display: flex; align-items: center; gap: 2rem; }
 
 .review-avg {
@@ -889,7 +858,6 @@ main {
     flex-shrink: 0;
 }
 
-/* ── Cart Page ────────────────────────────────────────── */
 .cart-section {
     background: white;
     border-radius: 16px;
@@ -967,7 +935,6 @@ main {
     cursor: crosshair;
 }
 
-/* ── Order summary card ────────────────────────────────── */
 .order-summary-card {
     background: white;
     border-radius: 16px;
@@ -999,7 +966,6 @@ main {
     padding: .3rem 0;
 }
 
-/* ── Promo code ────────────────────────────────────────── */
 .btn-outline-orange {
     border: 1.5px solid var(--orange);
     color: var(--orange);
@@ -1012,7 +978,6 @@ main {
     color: white;
 }
 
-/* ── Payment method buttons ────────────────────────────── */
 .payment-option {
     flex: 1;
     padding: .6rem 1rem;
@@ -1032,7 +997,6 @@ main {
     color: var(--orange);
 }
 
-/* ── Stripe card element ───────────────────────────────── */
 .stripe-element-wrap {
     border: 1.5px solid var(--gray-200);
     border-radius: 10px;
@@ -1042,7 +1006,6 @@ main {
 }
 .stripe-element-wrap:focus-within { border-color: var(--orange); }
 
-/* ── Order History ─────────────────────────────────────── */
 .order-history-card {
     background: white;
     border-radius: 16px;
@@ -1073,7 +1036,6 @@ main {
 .status-rejected       { background: #fee2e2; color: #991b1b; }
 .status-cancelled      { background: var(--gray-100); color: var(--gray-600); }
 
-/* ── Order Tracking Timeline ───────────────────────────── */
 .order-timeline {
     display: flex;
     flex-direction: column;
@@ -1142,7 +1104,6 @@ main {
 }
 .timeline-line.done { background: #22c55e; }
 
-/* ── Tracking map ──────────────────────────────────────── */
 .tracking-map {
     height: 220px;
     border-radius: 12px;
@@ -1150,7 +1111,6 @@ main {
     border: 1.5px solid var(--gray-200);
 }
 
-/* ── Star rating widget ────────────────────────────────── */
 .star-rating { display: flex; gap: .25rem; cursor: pointer; }
 
 .review-star {
@@ -1162,7 +1122,6 @@ main {
 .review-star.selected { color: var(--orange); }
 .review-star:hover { transform: scale(1.2); }
 
-/* ── Restaurant Live Orders ────────────────────────────── */
 .order-card-live {
     background: white;
     border-radius: 16px;
@@ -1185,7 +1144,6 @@ main {
 .ocl-items    { font-size: .82rem; }
 .ocl-address  { font-size: .82rem; color: var(--gray-600); }
 
-/* ── Live connection indicator ─────────────────────────── */
 .live-dot {
     width: 10px; height: 10px;
     border-radius: 50%;
@@ -1204,7 +1162,6 @@ main {
     50%       { box-shadow: 0 0 0 7px rgba(34,197,94,.08); }
 }
 
-/* ── Nav pills override for orders tabs ─────────────────── */
 .nav-pills .nav-link {
     border-radius: 10px;
     color: var(--gray-600);
@@ -1218,7 +1175,6 @@ main {
     border-color: var(--navy);
 }
 
-/* ── Menu management ────────────────────────────────── */
 .menu-category-block {
     background: white;
     border-radius: 14px;
@@ -1283,7 +1239,6 @@ main {
 .badge-approved { background: #dcfce7; color: #166534; font-size:.72rem; padding:.3em .65em; border-radius:8px; font-weight:600; }
 .badge-rejected { background: #fee2e2; color: #991b1b; font-size:.72rem; padding:.3em .65em; border-radius:8px; font-weight:600; }
 
-/* ── Change request status badge (used in both restaurant + admin views) */
 .cr-status-badge {
     display: inline-block;
     padding: .3em .75em;
@@ -1292,12 +1247,10 @@ main {
     font-weight: 600;
 }
 
-/* ── Border-orange card variant ─────────────────────── */
 .card-eatup.border-orange {
     border: 2px solid var(--orange);
 }
 
-/* ── Favorites unfav button ─────────────────────────── */
 .btn-unfav {
     position: absolute;
     top: 10px;
@@ -1318,7 +1271,6 @@ main {
 }
 .btn-unfav:hover { transform: scale(1.15); }
 
-/* ── Skeleton loaders ────────────────────────────────── */
 @keyframes skeleton-shimmer {
     0%   { background-position: -200% 0; }
     100% { background-position:  200% 0; }
@@ -1344,30 +1296,25 @@ main {
 .skeleton-row:nth-child(2) { animation-delay: .1s; }
 .skeleton-row:nth-child(3) { animation-delay: .2s; }
 
-/* ── Active nav link orange accent ───────────────────── */
 .navbar-eatup .nav-link.active {
     color: var(--orange) !important;
     background-color: rgba(249,115,22,0.12) !important;
 }
 
-/* ── Form invalid state ───────────────────────────────── */
 .form-control.is-invalid,
 .form-select.is-invalid {
     border-color: #dc2626;
     box-shadow: 0 0 0 3px rgba(220,38,38,0.12);
 }
 
-/* ── Responsive admin tables ─────────────────────────── */
 .admin-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-/* ── Mobile cart drawer hint ─────────────────────────── */
 @media (max-width: 991px) {
     .order-summary-card {
         position: static;
     }
 }
 
-/* ── Nav tabs override ───────────────────────────────── */
 .nav-tabs .nav-link {
     color: var(--gray-600);
     font-weight: 500;

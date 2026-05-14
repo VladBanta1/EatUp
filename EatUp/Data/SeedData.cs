@@ -41,7 +41,6 @@ public static class SeedData
 
         await EnsureAllRestaurantsAsync(db, hours);
 
-        // ── Update restaurant/menu images to local file paths ──────────
         // must run after EnsureAllRestaurantsAsync, which overwrites Image/Logo/CoverImage with Unsplash URLs for existing records on every startup
         Console.WriteLine("[SeedData] Updating images to local paths...");
         await UpdateLocalImagePathsAsync(db);
@@ -752,87 +751,67 @@ public static class SeedData
             ("La Mama", new[] {
                 (a, 5, "Sarmalele cu mămăligă m-au dus cu gândul la bunica. Gust autentic, porție generoasă!"),
                 (m, 5, "Ciorbă de burtă densă și gustoasă, papanașii la desert au fost vârful mesei. Nota 10!"),
-                (r, 3, "Tochitura moldovenească puțin uscată față de așteptări, dar gustul de ansamblu bun."),
-                (a, 4, "Mușchiul de porc la grătar a venit perfect gătit, cu legumele coapte delicios. Revin!"),
-                (m, 4, "Borșul de porc cu tăiței — o surpriză plăcută. Atmosferă autentică românească!"),
+                (r, 4, "Mușchiul de porc la grătar a venit perfect gătit, cu legumele coapte delicios. Revin!"),
             }),
             ("Sushi Tokyo", new[] {
                 (m, 5, "California Roll-urile sunt proaspete și impecabile. Tonkotsu Ramen — o revelație!"),
                 (a, 4, "Sashimi de somon excelent, porțiile generoase. Dragon Roll spectaculos. Recomand!"),
                 (r, 5, "Cel mai bun sushi din București! Gyoza crocante, Temaki Ton plin de savoare. Vin des!"),
-                (m, 4, "Miso Ramen Vegetarian savuros și hrănitor. Mochi Ice Cream la desert, delicios!"),
             }),
             ("Pizza Napoli", new[] {
                 (a, 5, "Diavola picantă și crocantă, exact cum mă așteptam de la o pizza napolitană autentică!"),
-                (m, 4, "Margherita cu mozzarella fior di latte — simplă, perfectă. Livrare în 30 de minute!"),
-                (r, 3, "Quattro Formaggi puțin prea sărată pentru gustul meu, dar ingredientele sunt bune."),
-                (a, 4, "Tartufo cu trufe a fost surpriza serii! Tiramisu-ul, fenomenal. Recomand cu drag."),
                 (m, 5, "Spaghetti Carbonara autentice, Napoli cu anșoa divin. Cea mai bună pizza din Victoriei!"),
+                (r, 3, "Quattro Formaggi puțin prea sărată pentru gustul meu, dar ingredientele sunt bune."),
             }),
-            ("Dulce Viență", new[] {
+            ("Dulce Viența", new[] {
                 (r, 5, "Tort de ciocolată neagră senzațional și un cappuccino perfect. Ambianță cozy, vii mereu!"),
                 (a, 5, "Cheesecake-ul cu fructe de pădure a fost fenomenal. Pancakes cu căpșuni, la fel!"),
                 (m, 4, "Smoothie Bowl Tropical a fost o explozie de culori și arome. Recomand cu drag!"),
-                (r, 4, "Croissant proaspăt și un latte cu vanilie. Livrare rapidă, ambalaj îngrijit. Revin!"),
             }),
             ("Taco Loco", new[] {
                 (m, 4, "Tacos al Pastor autentici, cu carne bine marinată și salsa proaspătă. Delicioși!"),
-                (a, 5, "Burrito Supreme a fost o masă completă! Guacamole de casă, perfect cremos."),
-                (r, 4, "Fish Tacos cu sriracha mayo — combinație câștigătoare. Nachos Supreme extrem de bun!"),
-                (m, 3, "Quesadilla puțin prea unsuroasă, dar Churros cu ciocolată au compensat!"),
                 (a, 5, "Cea mai bună mâncare mexicană din București! Porții generoase, totul proaspăt!"),
+                (r, 4, "Fish Tacos cu sriracha mayo — combinație câștigătoare. Nachos Supreme extrem de bun!"),
             }),
             ("Marele Zid", new[] {
                 (r, 5, "Har Gao și Siu Mai la dim sum — revelator! Rată Lăcuită a meritat fiecare leu."),
                 (m, 4, "Lo Mein cu pui plin de savoare, Fried Rice pregătit corect. Livrare rapidă!"),
                 (a, 4, "Pui în sos dulce-picant clasic și gustos. Tofu Mapo, surprinzător de bun și picant!"),
-                (r, 5, "Char Siu Bao pufos și suculent! Supa Wonton caldă și hrănitoare. Cel mai bun!"),
             }),
             ("Carbon & Flăcări", new[] {
                 (a, 5, "Coaste de porc BBQ fraged ca untul! Sosul de casă face diferența. Numărul 1 din București!"),
-                (m, 4, "Micii de casă au fost perfecți, aproape ca la bunici. Coleslaw — excelentă garnitură!"),
-                (r, 5, "Antricotul de 300g a venit exact medium-rare cum am cerut. Experiență de top!"),
-                (a, 4, "Fleică marinată — un clasic bine executat. Porumb la grătar ca bonus delicios."),
                 (m, 4, "T-Bone impresionant, Pulpa de Miel a câștigat seara. Recomand tuturor carnorilor!"),
+                (r, 5, "Antricotul de 300g a venit exact medium-rare cum am cerut. Experiență de top!"),
             }),
             ("Burgeria", new[] {
                 (r, 5, "Double Smash este cel mai bun burger din Craiova! Carnea angus smash e perfectă."),
-                (a, 4, "Bacon Burger bun, cartofii prăjiți sunt extraordinar de crocanți. Revin cu siguranță!"),
-                (m, 3, "Classic Burger corect, nimic spectaculos, dar consistent și bine executat."),
-                (r, 5, "Truffle Burger a fost o experiență de lux! Maioneza de trufe — senzațional."),
                 (a, 4, "Crispy Chicken crocant și suculent. Onion Rings perfecte, Sweet Potato Fries delicioși!"),
+                (m, 3, "Classic Burger corect, nimic spectaculos, dar consistent și bine executat."),
             }),
             ("Salata Verde", new[] {
                 (m, 5, "Poke Bowl cu somon a fost o revelație — proaspăt, echilibrat, plin de savoare!"),
                 (r, 4, "Caesar Salad clasică, bine executată. Smoothie-ul Berry a fost perfect după birou."),
                 (a, 4, "Buddha Bowl cu tofu copt — o surpriză plăcută. Green Detox, cel mai bun suc din Craiova!"),
-                (m, 5, "Quinoa Bowl a devenit mâncarea mea zilnică. Wrap cu pui la grill, suculent și proaspăt!"),
             }),
             ("Shaorma Palace", new[] {
                 (a, 5, "Shaorma de pui cu sos alb — cea mai bună din Craiova! Carne fragedă, legume crocante!"),
-                (m, 5, "Dürüm Kebab a venit cald și bine împachetat. Shaorma Mixtă, porție supergenerosă!"),
-                (r, 4, "Adana Kebab picant și suculent. Platoul Shaorma pentru 2 persoane, valoare excelentă!"),
-                (a, 4, "Falafel Plate crocant și gustos. Hummus de casă cremos. Revin săptămânal!"),
                 (m, 3, "Kebab Vită puțin uscat de data asta, dar Baklava cu fistic la desert a compensat."),
+                (r, 4, "Adana Kebab picant și suculent. Platoul Shaorma pentru 2 persoane, valoare excelentă!"),
             }),
             ("Taj Mahal", new[] {
                 (r, 5, "Butter Chicken cu Naan cu unt — combinație divină! Nu știam că există în Craiova!"),
                 (m, 4, "Tikka Masala autentică, bine echilibrată ca picant. Biryani de pui aromat, generos!"),
                 (a, 5, "Dal Makhani cremos și hrănitor. Gulab Jamun la desert — o explozie de dulceață!"),
-                (r, 4, "Palak Paneer consistent și gustos. Samosa crocantă. Mango Lassi răcoritor perfect!"),
             }),
             ("Pescărie La Dunăre", new[] {
                 (m, 4, "Doradă la grătar cu lămâie — proaspătă și bine pregătită. Ciorbă de pește excelentă!"),
-                (a, 5, "Platoul Seafood a fost spectaculos! Creveți Garlic Butter, cei mai buni mâncați vreodată!"),
-                (r, 4, "Calamari crocante, Midii în sos de vin alb senzaționale. Sos Tartare de casă, perfect!"),
-                (m, 3, "Tonul la grătar puțin prea uscat, dar Bisque de Creveți a compensat excelent."),
                 (a, 5, "Păstrăv cu lămâie copt perfect, Salata de Seafood proaspătă. Recomand cu drag!"),
+                (r, 4, "Calamari crocante, Midii în sos de vin alb senzaționale. Sos Tartare de casă, perfect!"),
             }),
             ("Verde Pur", new[] {
                 (m, 5, "Burger Portobello suculent și savuros! Nu mi-a lipsit deloc carnea. Fenomenal!"),
                 (r, 4, "Buddha Bowl vegan — o surpriză plăcută. Kombucha de casă, unicat în Craiova!"),
                 (a, 5, "Raw Cheesecake mi-a schimbat definitiv percepția despre deserturile vegane. Magistral!"),
-                (m, 4, "Poke Vegan colorat și proaspăt. Energy Balls perfecte ca gustare. Revin mereu!"),
             }),
         };
 
@@ -849,6 +828,12 @@ public static class SeedData
 
             foreach (var (cust, rating, comment) in reviews)
             {
+                if (await db.Reviews.AnyAsync(r => r.CustomerId == cust.Id && r.RestaurantId == rest.Id))
+                {
+                    dayOffset++;
+                    continue;
+                }
+
                 var orderDate = baseDate.AddDays(dayOffset++);
                 int orderNum = await db.Orders.CountAsync(o => o.RestaurantId == rest.Id) + 1;
                 var order = new Order

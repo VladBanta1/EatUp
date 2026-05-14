@@ -197,14 +197,12 @@ public class EmailService : IEmailService
     <tr><td align='center'>
       <table width='100%' style='max-width:560px;border-radius:16px;overflow:hidden;
                                   box-shadow:0 4px 24px rgba(0,0,0,.08);'>
-        <!-- Header -->
         <tr>
           <td style='background:#0f172a;padding:24px 32px;'>
             <span style='color:#f97316;font-size:28px;font-weight:900;
                          letter-spacing:-0.5px;font-family:Arial,sans-serif;'>EatUp</span>
           </td>
         </tr>
-        <!-- Body -->
         <tr>
           <td style='background:white;padding:32px;'>
             <p style='color:#64748b;font-size:14px;margin:0 0 20px;'>
@@ -214,7 +212,6 @@ public class EmailService : IEmailService
             {(button != "" ? $"<div style='margin-top:24px;'>{button}</div>" : "")}
           </td>
         </tr>
-        <!-- Footer -->
         <tr>
           <td style='background:#f8fafc;padding:16px 32px;text-align:center;
                      color:#94a3b8;font-size:12px;border-top:1px solid #e2e8f0;'>

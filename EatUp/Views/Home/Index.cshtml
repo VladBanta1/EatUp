@@ -143,16 +143,24 @@
             <div class="d-flex align-items-center gap-2">
                 <span class="text-muted" style="font-size:.85rem; font-weight:500;">Sortare:</span>
                 <div class="sort-tabs">
-                    @foreach (var (value, label) in new[] {("rating","Cel mai bun"),("fastest","Cel mai rapid"),("popular","Populare")})
+                    @foreach (var (value, label) in new[] {("fastest","Cel mai rapid"),("popular","Populare"),("cheapest","💸 Cel mai ieftin"),("recomandate","✨ Recomandate")})
                     {
-                        <a href="@Url.Action("Index","Home",new{q=Model.Query,category=Model.Category,city=Model.City,sort=value,openNow=Model.OpenNow,freeDelivery=Model.FreeDelivery,minRating=Model.MinRating})"
-                           class="sort-tab @(Model.Sort==value?"active":"")">@label</a>
+                        var sortHref = Url.Action("Index","Home",new{q=Model.Query,category=Model.Category,city=Model.City,sort=value,openNow=Model.OpenNow,freeDelivery=Model.FreeDelivery,minRating=Model.MinRating});
+                        @if (value == "recomandate" && User.Identity?.IsAuthenticated != true)
+                        {
+                            <a href="/account/login" class="sort-tab" title="Autentifică-te pentru recomandări personalizate">✨ Recomandate</a>
+                        }
+                        else
+                        {
+                            <a href="@sortHref" class="sort-tab @(Model.Sort==value?"active":"")">@label</a>
+                        }
                     }
                 </div>
             </div>
         </div>
     </div>
 </section>
+
 
 <section class="py-5">
     <div class="container">

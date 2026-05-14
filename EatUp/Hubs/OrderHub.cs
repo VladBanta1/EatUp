@@ -170,7 +170,6 @@ public class OrderHub : Hub
                 .SendAsync("courier_location", lat, lng);
         }
 
-        // courier reached destination — auto-mark order as Delivered
         using var finalScope = _scopeFactory.CreateScope();
         var finalDb = finalScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var finalOrder = await finalDb.Orders

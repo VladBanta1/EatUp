@@ -10,7 +10,6 @@ namespace EatUp.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // ── Drop FK_Reviews_Orders_OrderId if it exists ──────────────────────
             migrationBuilder.Sql(@"
                 SET @fk_exists = (
                     SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
@@ -26,7 +25,6 @@ namespace EatUp.Migrations
                 DEALLOCATE PREPARE stmt;
             ");
 
-            // ── Drop FK_Reviews_Users_CustomerId if it exists ────────────────────
             migrationBuilder.Sql(@"
                 SET @fk_exists = (
                     SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
@@ -42,7 +40,6 @@ namespace EatUp.Migrations
                 DEALLOCATE PREPARE stmt;
             ");
 
-            // ── Drop IX_Reviews_CustomerId if it exists ──────────────────────────
             migrationBuilder.Sql(@"
                 SET @idx_exists = (
                     SELECT COUNT(*) FROM information_schema.STATISTICS
@@ -57,7 +54,6 @@ namespace EatUp.Migrations
                 DEALLOCATE PREPARE stmt;
             ");
 
-            // ── Drop IX_Reviews_OrderId if it exists ─────────────────────────────
             migrationBuilder.Sql(@"
                 SET @idx_exists = (
                     SELECT COUNT(*) FROM information_schema.STATISTICS
@@ -136,7 +132,6 @@ namespace EatUp.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // ── Drop FK_Reviews_Orders_OrderId if it exists ──────────────────────
             migrationBuilder.Sql(@"
                 SET @fk_exists = (
                     SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
@@ -152,7 +147,6 @@ namespace EatUp.Migrations
                 DEALLOCATE PREPARE stmt;
             ");
 
-            // ── Drop FK_Reviews_Users_CustomerId if it exists ────────────────────
             migrationBuilder.Sql(@"
                 SET @fk_exists = (
                     SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
@@ -168,7 +162,6 @@ namespace EatUp.Migrations
                 DEALLOCATE PREPARE stmt;
             ");
 
-            // ── Drop IX_Reviews_CustomerId_RestaurantId if it exists ─────────────
             migrationBuilder.Sql(@"
                 SET @idx_exists = (
                     SELECT COUNT(*) FROM information_schema.STATISTICS
@@ -183,7 +176,6 @@ namespace EatUp.Migrations
                 DEALLOCATE PREPARE stmt;
             ");
 
-            // ── Drop IX_Reviews_OrderId if it exists ─────────────────────────────
             migrationBuilder.Sql(@"
                 SET @idx_exists = (
                     SELECT COUNT(*) FROM information_schema.STATISTICS
